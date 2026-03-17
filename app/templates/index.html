@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h4 mb-0">게시글 목록</h2>
+  <a href="/posts/new" class="btn btn-primary btn-sm">새 글 작성</a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width: 80px;" class="text-center">번호</th>
+        <th>제목</th>
+        <th style="width: 140px;" class="text-center">작성자</th>
+        <th style="width: 180px;" class="text-center">작성일시</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if posts %}
+        {% for post in posts %}
+        <tr>
+          <td class="text-center text-muted">{{ post.id }}</td>
+          <td>
+            <a href="/posts/{{ post.id }}" class="text-decoration-none post-title-link">
+              {{ post.title }}
+            </a>
+          </td>
+          <td class="text-center">{{ post.author }}</td>
+          <td class="text-center text-muted small">
+            {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="4" class="text-center text-muted py-5">
+            등록된 게시글이 없습니다.
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

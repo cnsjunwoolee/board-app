@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <h2 class="h4 mb-4">{{ "게시글 수정" if post else "새 글 작성" }}</h2>
+
+    <form
+      action="{{ '/posts/' ~ post.id ~ '/edit' if post else '/posts' }}"
+      method="post"
+    >
+      <!-- 제목 -->
+      <div class="mb-3">
+        <label for="title" class="form-label fw-semibold">제목 <span class="text-danger">*</span></label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          class="form-control"
+          value="{{ post.title if post else '' }}"
+          required
+          placeholder="제목을 입력하세요"
+        />
+      </div>
+
+      <!-- 작성자 -->
+      {% if post %}
+        <!-- 수정 시: 기존 작성자 유지, 입력 비활성화 -->
+        <div class="mb-3">
+          <label for="author" class="form-label fw-semibold">작성자</label>
+          <input
+            type="text"
+            id="author"
+            class="form-control"
+            value="{{ post.author }}"
+            disabled
+          />
+          <!-- disabled 필드는 form 전송에서 제외되므로 hidden으로 실제 값 전송 -->
+          <input type="hidden" name="author" value="{{ post.author }}" />
+        </div>
+      {% else %}
+        <!-- 신규 작성 시: 작성자 입력 -->
+        <div class="mb-3">
+          <label for="author" class="form-label fw-semibold">작성자 <span class="text-danger">*</span></label>
+          <input
+            type="text"
+            id="author"
+            name="author"
+            class="form-control"
+            value=""
+            required
+            placeholder="작성자명을 입력하세요"
+          />
+        </div>
+      {% endif %}
+
+      <!-- 내용 -->
+      <div class="mb-4">
+        <label for="content" class="form-label fw-semibold">내용 <span class="text-danger">*</span></label>
+        <textarea
+          id="content"
+          name="content"
+          class="form-control"
+          rows="10"
+          required
+          placeholder="내용을 입력하세요"
+        >{{ post.content if post else '' }}</textarea>
+      </div>
+
+      <!-- 버튼 -->
+      <div class="d-flex justify-content-between">
+        <a href="{{ '/posts/' ~ post.id if post else '/' }}" class="btn btn-outline-secondary">취소</a>
+        <button type="submit" class="btn btn-primary">저장</button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+{% endblock %}
