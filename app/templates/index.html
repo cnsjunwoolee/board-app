@@ -2,11 +2,12 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h2 class="h4 mb-0">게시글 목록 <span class="text-muted fs-6">(총 {{ total }}개)</span></h2>
+  <h2 class="h5 mb-0">게시글 목록 <span class="text-muted" style="font-size:0.85rem;">(총 {{ total }}개)</span></h2>
   <a href="/posts/new" class="btn btn-primary btn-sm">새 글 작성</a>
 </div>
 
-<div class="table-responsive">
+<!-- 데스크탑: 테이블 -->
+<div class="d-none d-md-block table-responsive">
   <table class="table table-bordered table-hover align-middle">
     <thead class="table-light">
       <tr>
@@ -23,35 +24,52 @@
         <tr>
           <td class="text-center text-muted">{{ post.id }}</td>
           <td>
-            <a href="/posts/{{ post.id }}" class="text-decoration-none post-title-link">
-              {{ post.title }}
-            </a>
-            {% if post.comments %}
-              <span class="text-muted small ms-1">[{{ post.comments | length }}]</span>
-            {% endif %}
+            <a href="/posts/{{ post.id }}" class="text-decoration-none post-title-link">{{ post.title }}</a>
+            {% if post.comments %}<span class="text-muted small ms-1">[{{ post.comments | length }}]</span>{% endif %}
           </td>
           <td class="text-center">{{ post.author }}</td>
           <td class="text-center text-muted small">{{ post.view_count }}</td>
-          <td class="text-center text-muted small">
-            {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
-          </td>
+          <td class="text-center text-muted small">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
         </tr>
         {% endfor %}
       {% else %}
-        <tr>
-          <td colspan="5" class="text-center text-muted py-5">
-            등록된 게시글이 없습니다.
-          </td>
-        </tr>
+        <tr><td colspan="5" class="text-center text-muted py-5">등록된 게시글이 없습니다.</td></tr>
       {% endif %}
     </tbody>
   </table>
 </div>
 
+<!-- 모바일: 카드 목록 -->
+<div class="d-md-none">
+  {% if posts %}
+    {% for post in posts %}
+    <a href="/posts/{{ post.id }}" class="text-decoration-none">
+      <div class="card mb-2 post-card">
+        <div class="card-body py-3 px-3">
+          <div class="post-card-title">
+            {{ post.title }}
+            {% if post.comments %}<span class="text-muted small ms-1">[{{ post.comments | length }}]</span>{% endif %}
+          </div>
+          <div class="post-card-meta">
+            <span>{{ post.author }}</span>
+            <span class="mx-1">·</span>
+            <span>조회 {{ post.view_count }}</span>
+            <span class="mx-1">·</span>
+            <span>{{ post.created_at.strftime('%m-%d %H:%M') }}</span>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  {% else %}
+    <p class="text-center text-muted py-5">등록된 게시글이 없습니다.</p>
+  {% endif %}
+</div>
+
 <!-- 페이지네이션 -->
 {% if total_pages > 1 %}
-<nav aria-label="페이지 이동">
-  <ul class="pagination justify-content-center">
+<nav aria-label="페이지 이동" class="mt-3">
+  <ul class="pagination justify-content-center flex-wrap">
     <li class="page-item {% if page == 1 %}disabled{% endif %}">
       <a class="page-link" href="/?page={{ page - 1 }}">이전</a>
     </li>
