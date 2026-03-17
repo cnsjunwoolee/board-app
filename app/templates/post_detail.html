@@ -7,34 +7,69 @@
     <!-- 제목 영역 -->
     <div class="mb-4">
       <h2 class="h3 mb-2">{{ post.title }}</h2>
-      <div class="text-muted small d-flex gap-3">
+      <div class="text-muted small d-flex gap-3 flex-wrap">
         <span>작성자: <strong>{{ post.author }}</strong></span>
         <span>작성일시: {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        <span>조회 <strong>{{ post.view_count }}</strong>회</span>
       </div>
     </div>
 
     <hr />
 
     <!-- 본문 영역 -->
-    <div class="post-content py-3">
-      {{ post.content }}
-    </div>
+    <div class="post-content py-3">{{ post.content }}</div>
 
     <hr />
 
     <!-- 버튼 영역 -->
-    <div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-5">
       <a href="/" class="btn btn-outline-secondary btn-sm">목록으로</a>
       <div class="d-flex gap-2">
         <a href="/posts/{{ post.id }}/edit" class="btn btn-outline-primary btn-sm">수정</a>
-
-        <!-- 삭제: form POST 방식 -->
-        <form
-          action="/posts/{{ post.id }}/delete"
-          method="post"
-          onsubmit="return confirm('정말 삭제하시겠습니까?');"
-        >
+        <form action="/posts/{{ post.id }}/delete" method="post"
+              onsubmit="return confirm('정말 삭제하시겠습니까?');">
           <button type="submit" class="btn btn-outline-danger btn-sm">삭제</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 댓글 영역 -->
+    <div id="comments">
+      <h5 class="mb-3">댓글 <span class="text-muted fs-6">{{ post.comments | length }}개</span></h5>
+
+      {% if post.comments %}
+        {% for comment in post.comments %}
+        <div class="border rounded p-3 mb-2 bg-light">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <strong class="me-2">{{ comment.author }}</strong>
+              <span class="text-muted small">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            <form action="/posts/{{ post.id }}/comments/{{ comment.id }}/delete" method="post"
+                  onsubmit="return confirm('댓글을 삭제하시겠습니까?');">
+              <button type="submit" class="btn btn-link btn-sm text-danger p-0">삭제</button>
+            </form>
+          </div>
+          <p class="mb-0 mt-2" style="white-space: pre-wrap;">{{ comment.content }}</p>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted">아직 댓글이 없습니다.</p>
+      {% endif %}
+
+      <!-- 댓글 작성 폼 -->
+      <div class="mt-4">
+        <h6>댓글 작성</h6>
+        <form action="/posts/{{ post.id }}/comments" method="post">
+          <div class="mb-2">
+            <input type="text" name="author" class="form-control form-control-sm"
+                   placeholder="작성자" required maxlength="50" style="max-width: 200px;">
+          </div>
+          <div class="mb-2">
+            <textarea name="content" class="form-control form-control-sm"
+                      rows="3" placeholder="댓글을 입력하세요" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">댓글 등록</button>
         </form>
       </div>
     </div>
