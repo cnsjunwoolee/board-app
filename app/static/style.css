@@ -15,6 +15,84 @@ main.container {
 }
 
 /* ──────────────────────────────────────────
+   신입회원 모집 배너
+────────────────────────────────────────── */
+
+.recruit-banner {
+  background: linear-gradient(135deg, #1a56db 0%, #0ea5e9 100%);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+}
+
+.recruit-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.recruit-badge {
+  background: rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 2rem;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.recruit-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.recruit-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+
+.recruit-sub {
+  font-size: 0.875rem;
+  opacity: 0.9;
+  word-break: keep-all;
+}
+
+.recruit-btn {
+  background: #fff;
+  color: #1a56db;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border-radius: 2rem;
+  padding: 0.45rem 1.2rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.recruit-btn:hover {
+  background: #e0eaff;
+  color: #1a56db;
+}
+
+@media (max-width: 767px) {
+  .recruit-banner {
+    padding: 1rem 1rem;
+  }
+  .recruit-title {
+    font-size: 1rem;
+  }
+  .recruit-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.5rem;
+  }
+}
+
+/* ──────────────────────────────────────────
    데스크탑 테이블
 ────────────────────────────────────────── */
 
