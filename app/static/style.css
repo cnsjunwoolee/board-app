@@ -93,6 +93,50 @@ main.container {
 }
 
 /* ──────────────────────────────────────────
+   사이드바
+────────────────────────────────────────── */
+
+.sidebar {
+  background: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  min-height: calc(100vh - 130px);
+  padding: 1rem 0;
+}
+
+.sidebar-link {
+  color: #495057;
+  border-radius: 0;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+  background: #e9ecef;
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+/* 모바일: 사이드바 가로 탭 */
+@media (max-width: 767px) {
+  .sidebar {
+    min-height: auto;
+    border-right: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0;
+  }
+
+  .sidebar .nav {
+    flex-direction: row !important;
+  }
+
+  .sidebar-link {
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+  }
+}
+
+/* ──────────────────────────────────────────
    데스크탑 테이블
 ────────────────────────────────────────── */
 

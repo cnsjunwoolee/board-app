@@ -1,0 +1,137 @@
+{% extends "layout_member.html" %}
+
+{% block member_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">{% if member %}회원 수정{% else %}회원 등록{% endif %}</h2>
+  <a href="/members/" class="btn btn-outline-secondary btn-sm">목록으로</a>
+</div>
+
+<form
+  method="post"
+  action="{% if member %}/members/{{ member.id }}/edit{% else %}/members/{% endif %}"
+  enctype="multipart/form-data"
+>
+  <div class="card">
+    <div class="card-body">
+
+      <!-- 이름 -->
+      <div class="mb-3">
+        <label for="name" class="form-label fw-semibold">이름 <span class="text-danger">*</span></label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          class="form-control"
+          value="{{ member.name if member else '' }}"
+          required
+        />
+      </div>
+
+      <!-- 생년월일 -->
+      <div class="mb-3">
+        <label for="birth_date" class="form-label fw-semibold">생년월일</label>
+        <input
+          type="date"
+          id="birth_date"
+          name="birth_date"
+          class="form-control"
+          value="{{ member.birth_date if member and member.birth_date else '' }}"
+        />
+      </div>
+
+      <!-- 학년 -->
+      <div class="mb-3">
+        <label for="grade" class="form-label fw-semibold">학년</label>
+        <select id="grade" name="grade" class="form-select">
+          <option value="">선택 안 함</option>
+          <option value="1학년" {% if member and member.grade == '1학년' %}selected{% endif %}>1학년</option>
+          <option value="2학년" {% if member and member.grade == '2학년' %}selected{% endif %}>2학년</option>
+          <option value="3학년" {% if member and member.grade == '3학년' %}selected{% endif %}>3학년</option>
+        </select>
+      </div>
+
+      <!-- 연락처 -->
+      <div class="mb-3">
+        <label for="phone" class="form-label fw-semibold">연락처</label>
+        <input
+          type="text"
+          id="phone"
+          name="phone"
+          class="form-control"
+          placeholder="010-0000-0000"
+          value="{{ member.phone if member and member.phone else '' }}"
+        />
+      </div>
+
+      <!-- 이메일 -->
+      <div class="mb-3">
+        <label for="email" class="form-label fw-semibold">이메일</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          class="form-control"
+          value="{{ member.email if member and member.email else '' }}"
+        />
+      </div>
+
+      <!-- 사진 -->
+      <div class="mb-3">
+        <label for="photo" class="form-label fw-semibold">사진</label>
+        {% if member and member.photo_path %}
+        <div class="mb-2">
+          <img
+            src="/static/{{ member.photo_path }}"
+            alt="현재 사진"
+            class="img-thumbnail"
+            style="max-height: 160px; max-width: 160px; object-fit: cover;"
+          />
+          <div class="text-muted small mt-1">현재 등록된 사진입니다. 새 사진을 선택하면 교체됩니다.</div>
+        </div>
+        {% endif %}
+        <input
+          type="file"
+          id="photo"
+          name="photo"
+          class="form-control"
+          accept="image/*"
+        />
+      </div>
+
+      <!-- 평가점수 -->
+      <div class="mb-3">
+        <label for="score" class="form-label fw-semibold">평가점수</label>
+        <input
+          type="number"
+          id="score"
+          name="score"
+          class="form-control"
+          min="0"
+          max="100"
+          value="{{ member.score if member else 0 }}"
+        />
+      </div>
+
+      <!-- 메모 -->
+      <div class="mb-3">
+        <label for="memo" class="form-label fw-semibold">메모</label>
+        <textarea
+          id="memo"
+          name="memo"
+          class="form-control"
+          rows="4"
+        >{{ member.memo if member and member.memo else '' }}</textarea>
+      </div>
+
+    </div>
+    <div class="card-footer d-flex gap-2 justify-content-end">
+      <a href="{% if member %}/members/{{ member.id }}{% else %}/members/{% endif %}" class="btn btn-outline-secondary">취소</a>
+      <button type="submit" class="btn btn-primary">
+        {% if member %}수정 완료{% else %}등록{% endif %}
+      </button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}

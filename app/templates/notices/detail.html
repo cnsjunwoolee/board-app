@@ -1,0 +1,36 @@
+{% extends "layout_board.html" %}
+
+{% block board_content %}
+
+<div class="mb-4">
+  <h2 class="h4 mb-1">{{ notice.title }}</h2>
+  <div class="text-muted small">
+    <span>{{ notice.author }}</span>
+    <span class="mx-2">·</span>
+    <span>{{ notice.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    {% if notice.updated_at and notice.updated_at != notice.created_at %}
+    <span class="mx-2">·</span>
+    <span>수정됨: {{ notice.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    {% endif %}
+  </div>
+</div>
+
+<hr>
+
+<!-- 공지 내용 (HTML 렌더링) -->
+<div class="notice-content py-3">
+  {{ notice.content | safe }}
+</div>
+
+<hr>
+
+<div class="d-flex gap-2 mt-3">
+  <a href="/notices/{{ notice.id }}/edit" class="btn btn-outline-primary btn-sm">수정</a>
+  <form method="post" action="/notices/{{ notice.id }}/delete"
+        onsubmit="return confirm('정말 삭제하시겠습니까?');" class="d-inline">
+    <button type="submit" class="btn btn-outline-danger btn-sm">삭제</button>
+  </form>
+  <a href="/notices/" class="btn btn-outline-secondary btn-sm ms-auto">목록으로</a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "layout_board.html" %}
+
+{% block board_content %}
+
+<!-- Quill CDN -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+
+<h2 class="h5 mb-4">{% if notice %}공지사항 수정{% else %}공지사항 작성{% endif %}</h2>
+
+<form method="post"
+      action="{% if notice %}/notices/{{ notice.id }}/edit{% else %}/notices/{% endif %}"
+      id="notice-form">
+
+  <div class="mb-3">
+    <label for="title" class="form-label fw-semibold">제목 <span class="text-danger">*</span></label>
+    <input type="text" id="title" name="title" class="form-control"
+           value="{{ notice.title if notice else '' }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="author" class="form-label fw-semibold">작성자 <span class="text-danger">*</span></label>
+    <input type="text" id="author" name="author" class="form-control"
+           value="{{ notice.author if notice else '' }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label fw-semibold">내용</label>
+    <!-- Quill 에디터 컨테이너 -->
+    <div id="editor" style="min-height: 300px; background: #fff;"></div>
+    <!-- hidden input으로 내용 전달 -->
+    <input type="hidden" name="content" id="content-input">
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">저장</button>
+    <a href="{% if notice %}/notices/{{ notice.id }}{% else %}/notices/{% endif %}"
+       class="btn btn-outline-secondary">취소</a>
+  </div>
+</form>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script>
+const quill = new Quill('#editor', {
+  theme: 'snow',
+  modules: {
+    toolbar: [
+      [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'script': 'sub' }, { 'script': 'super' }],
+      [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
+      [{ 'direction': 'rtl' }, { 'align': [] }],
+      ['link', 'image', 'video'],
+      ['clean']
+    ]
+  }
+});
+
+// 기존 내용 로드 (수정 시)
+{% if notice and notice.content %}
+quill.root.innerHTML = {{ notice.content | tojson }};
+{% endif %}
+
+// 폼 제출 시 에디터 내용을 hidden input에 복사
+document.getElementById('notice-form').addEventListener('submit', function () {
+  document.getElementById('content-input').value = quill.root.innerHTML;
+});
+</script>
+
+{% endblock %}

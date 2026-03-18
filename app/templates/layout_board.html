@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-lg px-0">
+  <div class="row g-0">
+
+    <!-- 사이드바 -->
+    <div class="col-md-2 sidebar">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a href="/board/"
+             class="nav-link sidebar-link {% if request.url.path == '/board/' or request.url.path == '/board' %}active{% endif %}">
+            게시판
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="/notices/"
+             class="nav-link sidebar-link {% if request.url.path.startswith('/notices') %}active{% endif %}">
+            공지사항
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="col-md-10 px-4 py-3">
+      {% block board_content %}{% endblock %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

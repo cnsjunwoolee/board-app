@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h5 mb-0">회원모집 배너 미리보기</h2>
+    <a href="/recruit/banner" class="btn btn-outline-secondary btn-sm">편집으로 돌아가기</a>
+  </div>
+
+  <div class="border rounded p-3 bg-white">
+    {% if banner and banner.content %}
+      {{ banner.content | safe }}
+    {% else %}
+      <p class="text-center text-muted py-5">저장된 배너 내용이 없습니다.</p>
+    {% endif %}
+  </div>
+
+  {% if banner and banner.updated_at %}
+  <p class="text-muted small mt-2">마지막 저장: {{ banner.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+  {% endif %}
+</div>
+{% endblock %}

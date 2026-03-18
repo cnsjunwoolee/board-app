@@ -27,3 +27,37 @@ class Comment(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     post = relationship("Post", back_populates="comments")
+
+
+class Member(Base):
+    __tablename__ = "members"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), nullable=False)
+    birth_date = Column(String(20))          # 예: 2008-03-15
+    grade = Column(String(20))               # 예: 1학년, 2학년
+    phone = Column(String(20))
+    email = Column(String(100))
+    photo_path = Column(String(200))         # static/uploads/파일명
+    score = Column(Integer, default=0)       # 평가 점수
+    memo = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class Notice(Base):
+    __tablename__ = "notices"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(200), nullable=False)
+    content = Column(Text)                   # HTML 내용
+    author = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class RecruitBanner(Base):
+    __tablename__ = "recruit_banner"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    content = Column(Text)                   # HTML 내용
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

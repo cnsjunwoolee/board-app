@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-lg px-0">
+  <div class="row g-0">
+
+    <!-- 사이드바 -->
+    <div class="col-md-2 sidebar">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a href="/members/"
+             class="nav-link sidebar-link {% if request.url.path.startswith('/members') %}active{% endif %}">
+            회원조회
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="/recruit/banner"
+             class="nav-link sidebar-link {% if request.url.path.startswith('/recruit/banner') %}active{% endif %}">
+            회원모집 배너
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="col-md-10 px-4 py-3">
+      {% block member_content %}{% endblock %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

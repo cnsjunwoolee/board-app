@@ -1,0 +1,96 @@
+{% extends "layout_member.html" %}
+
+{% block member_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">회원 목록 <span class="text-muted" style="font-size:0.85rem;">(총 {{ members | length }}명)</span></h2>
+</div>
+
+<!-- 검색 폼 -->
+<form method="get" action="/members/" class="mb-3">
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <input
+      type="text"
+      name="name"
+      class="form-control form-control-sm"
+      style="width: 160px;"
+      placeholder="이름 검색"
+      value="{{ search_name }}"
+    />
+    <select name="grade" class="form-select form-select-sm" style="width: 130px;">
+      <option value="" {% if not search_grade %}selected{% endif %}>전체 학년</option>
+      <option value="1학년" {% if search_grade == '1학년' %}selected{% endif %}>1학년</option>
+      <option value="2학년" {% if search_grade == '2학년' %}selected{% endif %}>2학년</option>
+      <option value="3학년" {% if search_grade == '3학년' %}selected{% endif %}>3학년</option>
+    </select>
+    <button type="submit" class="btn btn-outline-primary btn-sm">검색</button>
+    <a href="/members/new" class="btn btn-primary btn-sm">+ 회원 등록</a>
+  </div>
+</form>
+
+<!-- 데스크탑: 테이블 -->
+<div class="d-none d-md-block table-responsive">
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width: 60px;" class="text-center">번호</th>
+        <th>이름</th>
+        <th style="width: 90px;" class="text-center">학년</th>
+        <th style="width: 140px;" class="text-center">연락처</th>
+        <th style="width: 90px;" class="text-center">평가점수</th>
+        <th style="width: 140px;" class="text-center">등록일</th>
+        <th style="width: 70px;" class="text-center">상세</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if members %}
+        {% for member in members %}
+        <tr>
+          <td class="text-center text-muted">{{ member.id }}</td>
+          <td>{{ member.name }}</td>
+          <td class="text-center">{{ member.grade or '-' }}</td>
+          <td class="text-center">{{ member.phone or '-' }}</td>
+          <td class="text-center">{{ member.score }}</td>
+          <td class="text-center text-muted small">{{ member.created_at.strftime('%Y-%m-%d') }}</td>
+          <td class="text-center">
+            <a href="/members/{{ member.id }}" class="btn btn-outline-secondary btn-sm">상세</a>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-5">등록된 회원이 없습니다.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- 모바일: 카드 목록 -->
+<div class="d-md-none">
+  {% if members %}
+    {% for member in members %}
+    <a href="/members/{{ member.id }}" class="text-decoration-none">
+      <div class="card mb-2 post-card">
+        <div class="card-body py-3 px-3">
+          <div class="post-card-title">
+            {{ member.name }}
+            {% if member.grade %}
+              <span class="badge bg-secondary ms-1" style="font-size:0.75rem;">{{ member.grade }}</span>
+            {% endif %}
+          </div>
+          <div class="post-card-meta">
+            <span>{{ member.phone or '연락처 없음' }}</span>
+            <span class="mx-1">·</span>
+            <span>평가점수 {{ member.score }}</span>
+            <span class="mx-1">·</span>
+            <span>{{ member.created_at.strftime('%m-%d') }}</span>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  {% else %}
+    <p class="text-center text-muted py-5">등록된 회원이 없습니다.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
