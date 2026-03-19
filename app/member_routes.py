@@ -5,9 +5,12 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 from typing import Optional
 import uuid
+import math
 
 from app.database import get_db
 from app.models import Member
+
+PAGE_SIZE = 20
 
 member_router = APIRouter(prefix="/members")
 
@@ -18,12 +21,13 @@ UPLOAD_DIR = BASE_DIR / "static/uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 
-# 1. GET /members/ - 회원 목록 (검색: 이름, 학년)
+# 1. GET /members/ - 회원 목록 (검색 + 페이징)
 @member_router.get("/")
 def list_members(
     request: Request,
     name: Optional[str] = None,
     grade: Optional[str] = None,
+    page: int = 1,
     frame: bool = False,
     db: Session = Depends(get_db),
 ):
@@ -34,13 +38,25 @@ def list_members(
     if grade:
         query = query.filter(Member.grade == grade)
 
-    members = query.order_by(Member.created_at.desc()).all()
+    total = query.count()
+    total_pages = max(1, math.ceil(total / PAGE_SIZE))
+    page = max(1, min(page, total_pages))
+
+    members = (
+        query.order_by(Member.created_at.desc())
+        .offset((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE)
+        .all()
+    )
 
     return templates.TemplateResponse(
         "members/list.html",
         {
             "request": request,
             "members": members,
+            "total": total,
+            "page": page,
+            "total_pages": total_pages,
             "search_name": name or "",
             "search_grade": grade or "",
             "is_frame": frame,

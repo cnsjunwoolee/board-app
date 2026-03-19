@@ -4,9 +4,11 @@ from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from sqlalchemy.orm import Session
 from typing import List
+import random
+from datetime import datetime, timedelta
 
 from app.database import get_db
-from app.models import Operator, OperatorPermission
+from app.models import Operator, OperatorPermission, Member
 from app.auth import get_current_operator, hash_password, MENU_LABELS
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
@@ -144,3 +146,37 @@ def operator_delete(op_id: int, request: Request, db: Session = Depends(get_db))
         db.delete(target)
         db.commit()
     return RedirectResponse(url="/admin/operators", status_code=303)
+
+
+@admin_router.post("/seed-members")
+def seed_members(request: Request, db: Session = Depends(get_db)):
+    """가상 회원 100명 생성 (운영 서버용)."""
+    op = require_admin(request, db)
+    if not op:
+        return RedirectResponse(url="/auth/login", status_code=303)
+
+    last_names = ['김','이','박','최','정','강','조','윤','장','임','한','오','서','신','권','황','안','송','류','전']
+    first_names = ['민준','서준','도윤','예준','시우','하준','주원','지호','지후','준서',
+                   '서연','서윤','지우','하은','하윤','민서','지유','윤서','채원','수아',
+                   '현우','지훈','건우','우진','선우','민재','현준','태윤','재윤','승현',
+                   '소율','다은','예은','수빈','지아','채은','예린','지윤','나은','유진']
+    grades = ['1학년','2학년','3학년']
+    memos = ['열정적인 학생','프로그래밍에 관심이 많음','회로 설계를 좋아함','아두이노 프로젝트 경험',
+             '3D 프린팅 경험 있음','대회 참가 경험','팀 리더 경험','성실한 학생','창의적인 아이디어가 많음',None]
+
+    for i in range(100):
+        name = random.choice(last_names) + random.choice(first_names)
+        birth = datetime(2007 + random.randint(0, 2), random.randint(1, 12), random.randint(1, 28))
+        m = Member(
+            name=name,
+            birth_date=birth.strftime('%Y-%m-%d'),
+            grade=random.choice(grades),
+            phone=f'010-{random.randint(1000,9999)}-{random.randint(1000,9999)}',
+            email=f'student{i+1}@daeshin.hs.kr',
+            score=random.randint(0, 5),
+            memo=random.choice(memos),
+            created_at=datetime.now() - timedelta(days=random.randint(0, 90)),
+        )
+        db.add(m)
+    db.commit()
+    return RedirectResponse(url="/members/", status_code=303)
