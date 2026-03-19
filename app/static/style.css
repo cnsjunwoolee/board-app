@@ -185,7 +185,7 @@ main.container { flex: 1; }
 
 .hero-section {
   height: 25vh; min-height: 160px;
-  background: linear-gradient(135deg, var(--lg-brand) 0%, #c2185b 40%, #880e4f 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 40%, #383838 100%);
   position: relative; overflow: hidden;
   display: flex; align-items: center;
 }
