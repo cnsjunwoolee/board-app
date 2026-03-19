@@ -148,6 +148,21 @@ def operator_delete(op_id: int, request: Request, db: Session = Depends(get_db))
     return RedirectResponse(url="/admin/operators", status_code=303)
 
 
+@admin_router.post("/sanitize-members")
+def sanitize_members(request: Request, db: Session = Depends(get_db)):
+    """회원 개인정보 일괄 변경 (전화번호, 이메일)."""
+    op = require_admin(request, db)
+    if not op:
+        return RedirectResponse(url="/auth/login", status_code=303)
+
+    members = db.query(Member).all()
+    for m in members:
+        m.phone = "010-1111-1111"
+        m.email = "test@test.co.kr"
+    db.commit()
+    return RedirectResponse(url="/members/", status_code=303)
+
+
 @admin_router.post("/seed-members")
 def seed_members(request: Request, db: Session = Depends(get_db)):
     """가상 회원 100명 생성 (운영 서버용)."""
