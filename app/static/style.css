@@ -199,7 +199,7 @@ main.container { flex: 1; }
 }
 
 .hero-deco { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-.hero-icon { position: absolute; color: rgba(255,255,255,0.1); }
+.hero-icon { position: absolute; color: rgba(200,220,255,0.35); }
 .hero-icon-1 { width: 70px; top: 12%; right: 8%; animation: heroFloat 6s ease-in-out infinite; }
 .hero-icon-2 { width: 100px; bottom: 18%; right: 22%; animation: heroFloat 5s ease-in-out 1s infinite; }
 .hero-icon-3 { width: 40px; top: 15%; right: 35%; animation: heroFloat 7s ease-in-out 0.5s infinite; }
@@ -207,14 +207,14 @@ main.container { flex: 1; }
 .hero-icon-5 { width: 55px; top: 8%; right: 60%; animation: heroFloat 8s ease-in-out 1.5s infinite; }
 .hero-binary {
   position: absolute; font-family: 'Courier New', monospace;
-  font-size: 0.7rem; color: rgba(255,255,255,0.08); letter-spacing: 0.15em; font-weight: 700;
+  font-size: 0.7rem; color: rgba(200,220,255,0.25); letter-spacing: 0.15em; font-weight: 700;
 }
 .hero-binary-1 { top: 70%; right: 10%; animation: heroBinary 4s steps(1) infinite; }
 .hero-binary-2 { top: 25%; right: 75%; animation: heroBinary 3s steps(1) 1.5s infinite; }
 
 @keyframes heroFloat {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(-20px); }
 }
 @keyframes heroBinary {
   0% { opacity: 0.08; }
