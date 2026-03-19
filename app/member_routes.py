@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, File
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from sqlalchemy.orm import Session
 from typing import Optional
 import uuid
 import math
+import io
 
 from app.database import get_db
 from app.models import Member
@@ -112,6 +113,66 @@ async def create_member(
     db.commit()
     db.refresh(member)
     return RedirectResponse(url=f"/members/{member.id}", status_code=303)
+
+
+# 8. GET /members/export - 회원 엑셀 다운로드
+@member_router.get("/export")
+def export_members(
+    name: Optional[str] = None,
+    grade: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+
+    query = db.query(Member)
+    if name:
+        query = query.filter(Member.name.contains(name))
+    if grade:
+        query = query.filter(Member.grade == grade)
+    members = query.order_by(Member.created_at.desc()).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "회원목록"
+
+    # 헤더
+    headers = ["번호", "이름", "생년월일", "학년", "연락처", "이메일", "평가점수", "메모", "등록일"]
+    header_fill = PatternFill(start_color="A50034", end_color="A50034", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # 데이터
+    for i, m in enumerate(members, 2):
+        ws.cell(row=i, column=1, value=m.id)
+        ws.cell(row=i, column=2, value=m.name)
+        ws.cell(row=i, column=3, value=m.birth_date or "")
+        ws.cell(row=i, column=4, value=m.grade or "")
+        ws.cell(row=i, column=5, value=m.phone or "")
+        ws.cell(row=i, column=6, value=m.email or "")
+        ws.cell(row=i, column=7, value=f"{'★' * m.score}{'☆' * (5 - m.score)}")
+        ws.cell(row=i, column=8, value=m.memo or "")
+        ws.cell(row=i, column=9, value=m.created_at.strftime("%Y-%m-%d"))
+
+    # 열 너비 조정
+    widths = [8, 12, 14, 10, 16, 25, 14, 30, 14]
+    for col, w in enumerate(widths, 1):
+        ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f"members_{grade or 'all'}.xlsx" if grade else "members_all.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # 4. GET /members/{id} - 회원 상세
