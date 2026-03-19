@@ -1,5 +1,9 @@
 {% extends "layout_board.html" %}
 
+{% block page_title %}{% if notice %}공지사항 수정{% else %}공지사항 작성{% endif %}{% endblock %}
+{% block page_title_heading %}{% if notice %}공지사항 수정{% else %}공지사항 작성{% endif %}{% endblock %}
+{% block page_breadcrumb %}{% if notice %}공지사항 수정{% else %}공지사항 작성{% endif %}{% endblock %}
+
 {% block board_content %}
 
 <!-- Quill CDN -->

@@ -1,32 +1,37 @@
 {% extends "base.html" %}
 
+{% block sidebar %}
+<div class="sidebar-section-title">게시판</div>
+<nav class="sidebar-nav">
+  <a href="/board/"
+     class="sidebar-item {% if request.url.path == '/board/' or request.url.path == '/board' or request.url.path.startswith('/posts') %}active{% endif %}">
+    <span>게시판</span>
+  </a>
+  <a href="/notices/"
+     class="sidebar-item {% if request.url.path.startswith('/notices') %}active{% endif %}">
+    <span>공지사항</span>
+  </a>
+</nav>
+{% endblock %}
+
 {% block content %}
-<div class="container-lg px-0">
-  <div class="row g-0">
-
-    <!-- 사이드바 -->
-    <div class="col-md-2 sidebar">
-      <ul class="nav flex-column">
-        <li class="nav-item">
-          <a href="/board/"
-             class="nav-link sidebar-link {% if request.url.path == '/board/' or request.url.path == '/board' %}active{% endif %}">
-            게시판
-          </a>
-        </li>
-        <li class="nav-item">
-          <a href="/notices/"
-             class="nav-link sidebar-link {% if request.url.path.startswith('/notices') %}active{% endif %}">
-            공지사항
-          </a>
-        </li>
-      </ul>
-    </div>
-
-    <!-- 메인 컨텐츠 -->
-    <div class="col-md-10 px-4 py-3">
-      {% block board_content %}{% endblock %}
-    </div>
-
+<!-- 브레드크럼 탭 바 -->
+<div class="breadcrumb-tabs">
+  <a href="/" class="breadcrumb-tab">Home</a>
+  <div class="breadcrumb-tab active">
+    {% block page_title %}페이지{% endblock %}
+    <span class="tab-close">&#215;</span>
   </div>
+</div>
+
+<!-- 페이지 헤더 -->
+<div class="page-header">
+  <h1 class="page-title">&#9733; {% block page_title_heading %}{% endblock %}</h1>
+  <div class="page-breadcrumb">Home &gt; 게시판 &gt; {% block page_breadcrumb %}{% endblock %}</div>
+</div>
+
+<!-- 실제 컨텐츠 -->
+<div class="page-body">
+  {% block board_content %}{% endblock %}
 </div>
 {% endblock %}

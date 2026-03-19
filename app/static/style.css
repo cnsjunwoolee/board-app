@@ -14,6 +14,143 @@ main.container {
   flex: 1;
 }
 
+/* ── 앱 전체 레이아웃 (PLM 스타일) ── */
+
+body {
+  padding-top: 50px;
+  margin: 0;
+}
+
+.app-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  height: 50px;
+  background: #1e3a5f;
+  display: flex; align-items: center;
+  padding: 0 1rem; gap: 0;
+}
+
+.header-brand {
+  color: #fff; font-weight: 700; font-size: 1rem;
+  text-decoration: none; margin-right: 2rem; white-space: nowrap;
+}
+
+.header-toggle {
+  background: none; border: none; color: #fff;
+  font-size: 1.3rem; cursor: pointer; padding: 0 0.75rem 0 0;
+}
+
+.header-nav { display: flex; flex: 1; }
+
+.header-nav-item {
+  color: rgba(255,255,255,0.8); text-decoration: none;
+  padding: 0 1.25rem; height: 50px; display: flex; align-items: center;
+  font-size: 0.9rem; border-bottom: 3px solid transparent;
+}
+
+.header-nav-item:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+.header-nav-item.active {
+  color: #fff; border-bottom-color: #fff; font-weight: 600;
+}
+
+.header-right {
+  margin-left: auto; color: rgba(255,255,255,0.85); font-size: 0.85rem;
+}
+
+/* ── 바디 2단 레이아웃 ── */
+
+.app-body { display: flex; min-height: calc(100vh - 50px - 44px); }
+
+.app-sidebar {
+  width: 200px; min-width: 200px;
+  background: #fff;
+  border-right: 1px solid #dee2e6;
+  transition: width 0.2s, min-width 0.2s;
+  overflow: hidden;
+}
+
+.app-sidebar.collapsed { width: 0; min-width: 0; }
+
+.app-main { flex: 1; min-width: 0; background: #f5f6fa; }
+
+.sidebar-section-title {
+  padding: 1rem 1rem 0.5rem;
+  font-size: 0.78rem; font-weight: 700;
+  color: #6c757d; text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1px solid #e9ecef; margin-bottom: 0.25rem;
+}
+
+.sidebar-nav { display: flex; flex-direction: column; }
+
+.sidebar-item {
+  display: block; padding: 0.55rem 1rem;
+  color: #343a40; text-decoration: none; font-size: 0.875rem;
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+}
+
+.sidebar-item:hover { background: #f0f4ff; color: #1a56db; }
+
+.sidebar-item.active {
+  background: #e8f0fe; color: #1a56db;
+  font-weight: 600; border-left-color: #1a56db;
+}
+
+/* ── 브레드크럼 탭 ── */
+
+.breadcrumb-tabs {
+  display: flex; align-items: center;
+  background: #fff; border-bottom: 1px solid #dee2e6;
+  padding: 0 1rem; height: 36px; gap: 0;
+}
+
+.breadcrumb-tab {
+  padding: 0 1rem; height: 36px; display: flex; align-items: center;
+  font-size: 0.8rem; color: #6c757d; text-decoration: none;
+  border-right: 1px solid #dee2e6;
+}
+
+.breadcrumb-tab.active {
+  color: #1a56db; font-weight: 500;
+  border-bottom: 2px solid #1a56db; background: #f0f4ff;
+}
+
+.tab-close {
+  margin-left: 0.4rem; font-size: 0.9rem; cursor: pointer; color: #adb5bd;
+}
+
+.tab-close:hover { color: #dc3545; }
+
+/* ── 페이지 헤더 ── */
+
+.page-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.75rem 1.25rem 0.5rem;
+  background: #fff; border-bottom: 1px solid #dee2e6;
+}
+
+.page-title { font-size: 1.1rem; font-weight: 700; margin: 0; color: #1e3a5f; }
+
+.page-breadcrumb { font-size: 0.75rem; color: #6c757d; }
+
+/* ── 페이지 바디 ── */
+
+.page-body { padding: 1rem 1.25rem; }
+
+/* ── 모바일 ── */
+
+@media (max-width: 767px) {
+  .app-sidebar {
+    width: 0; min-width: 0;
+    position: fixed; z-index: 999;
+    height: 100vh; top: 50px; left: 0;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+  }
+  .app-sidebar.open { width: 200px; min-width: 200px; }
+  .header-nav-item { padding: 0 0.75rem; font-size: 0.8rem; }
+  .page-body { padding: 0.75rem; }
+}
+
 /* ──────────────────────────────────────────
    신입회원 모집 배너
 ────────────────────────────────────────── */

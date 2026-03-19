@@ -1,5 +1,9 @@
 {% extends "layout_member.html" %}
 
+{% block page_title %}{% if member %}회원 수정{% else %}회원 등록{% endif %}{% endblock %}
+{% block page_title_heading %}{% if member %}회원 수정{% else %}회원 등록{% endif %}{% endblock %}
+{% block page_breadcrumb %}{% if member %}회원 수정{% else %}회원 등록{% endif %}{% endblock %}
+
 {% block member_content %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
