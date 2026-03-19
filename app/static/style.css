@@ -498,10 +498,15 @@ main.container { flex: 1; }
   textarea.form-control { font-size: 0.9rem; }
 
   /* 히어로 모바일 */
-  .hero-section { height: 20vh; min-height: 130px; }
+  .hero-section { height: 22vh; min-height: 140px; }
   .hero-title { font-size: 1.4rem; }
   .hero-subtitle { font-size: 0.8rem; }
-  .hero-tag { font-size: 0.7rem; padding: 0.15rem 0.5rem; }
-  .hero-icon { display: none; }
-  .hero-binary { display: none; }
+  .hero-tags { gap: 0.3rem; }
+  .hero-tag { font-size: 0.65rem; padding: 0.12rem 0.4rem; }
+  .hero-icon { opacity: 0.7; }
+  .hero-icon-1 { width: 45px; }
+  .hero-icon-2 { width: 60px; }
+  .hero-icon-3 { width: 28px; }
+  .hero-icon-4 { width: 50px; }
+  .hero-icon-5 { width: 35px; }
 }
