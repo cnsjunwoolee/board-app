@@ -54,7 +54,7 @@
           <td>{{ member.name }}</td>
           <td class="text-center">{{ member.grade or '-' }}</td>
           <td class="text-center">{{ member.phone or '-' }}</td>
-          <td class="text-center">{{ member.score }}</td>
+          <td class="text-center" style="white-space:nowrap;">{% for i in range(1, 6) %}<span style="color:{{ '#ffc107' if i <= member.score else '#dee2e6' }};">&#9733;</span>{% endfor %}</td>
           <td class="text-center text-muted small">{{ member.created_at.strftime('%Y-%m-%d') }}</td>
           <td class="text-center">
             <a href="/members/{{ member.id }}" class="btn btn-outline-secondary btn-sm">상세</a>
@@ -84,7 +84,7 @@
           <div class="post-card-meta">
             <span>{{ member.phone or '연락처 없음' }}</span>
             <span class="mx-1">·</span>
-            <span>평가점수 {{ member.score }}</span>
+            <span>{% for i in range(1, 6) %}<span style="color:{{ '#ffc107' if i <= member.score else '#dee2e6' }};">&#9733;</span>{% endfor %}</span>
             <span class="mx-1">·</span>
             <span>{{ member.created_at.strftime('%m-%d') }}</span>
           </div>

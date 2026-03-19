@@ -51,7 +51,7 @@
         </tr>
         <tr>
           <th class="text-muted">평가점수</th>
-          <td>{{ member.score }}</td>
+          <td>{% for i in range(1, 6) %}<span style="color:{{ '#ffc107' if i <= member.score else '#dee2e6' }}; font-size:1.2rem;">&#9733;</span>{% endfor %} <span class="text-muted small">({{ member.score }}점)</span></td>
         </tr>
         <tr>
           <th class="text-muted">등록일</th>
