@@ -1,0 +1,66 @@
+{% extends "layout_admin.html" %}
+
+{% block page_title_heading %}운영진 관리{% endblock %}
+{% block page_breadcrumb %}운영진 목록{% endblock %}
+
+{% block admin_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">운영진 목록</h2>
+  <a href="/admin/operators/new" class="btn btn-primary btn-sm">운영진 추가</a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:0.85rem;">
+      <thead class="table-light">
+        <tr>
+          <th class="text-center" style="width:50px;">ID</th>
+          <th>아이디</th>
+          <th>이름</th>
+          <th>권한</th>
+          <th class="text-center" style="width:70px;">상태</th>
+          <th class="text-center" style="width:140px;">등록일</th>
+          <th class="text-center" style="width:120px;">관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for op in operators %}
+        <tr>
+          <td class="text-center text-muted">{{ op.id }}</td>
+          <td><strong>{{ op.username }}</strong></td>
+          <td>{{ op.name }}</td>
+          <td>
+            {% for p in op.permissions %}
+            <span class="badge" style="background:var(--lg-brand-light,#fce4ec);color:var(--lg-brand,#A50034);font-weight:600;font-size:0.72rem;">
+              {{ menu_labels.get(p.menu_code, p.menu_code) }}
+            </span>
+            {% endfor %}
+          </td>
+          <td class="text-center">
+            {% if op.is_active %}
+            <span class="badge bg-success" style="font-size:0.72rem;">활성</span>
+            {% else %}
+            <span class="badge bg-secondary" style="font-size:0.72rem;">비활성</span>
+            {% endif %}
+          </td>
+          <td class="text-center text-muted small">{{ op.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td class="text-center">
+            <a href="/admin/operators/{{ op.id }}/edit" class="btn btn-outline-primary btn-sm" style="font-size:0.75rem;">수정</a>
+            {% if op.id != current_op.id %}
+            <form action="/admin/operators/{{ op.id }}/delete" method="post" style="display:inline;"
+                  onsubmit="return confirm('정말 삭제하시겠습니까?');">
+              <button type="submit" class="btn btn-outline-danger btn-sm" style="font-size:0.75rem;">삭제</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">등록된 운영진이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

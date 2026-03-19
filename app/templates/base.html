@@ -21,8 +21,16 @@
     <nav class="header-nav">
       <a href="#" class="header-nav-item" id="nav-member" onclick="activateSection('member');return false;">회원모집</a>
       <a href="#" class="header-nav-item" id="nav-board" onclick="activateSection('board');return false;">게시판</a>
+      <a href="#" class="header-nav-item" id="nav-admin" onclick="activateSection('admin');return false;">관리</a>
     </nav>
-    <div class="header-right">&#9679; 관리자</div>
+    <div class="header-right">
+      {% if current_operator %}
+      <span>{{ current_operator.name }}</span>
+      <a href="/auth/logout" style="color:var(--lg-gray-500);margin-left:0.5rem;font-size:0.78rem;text-decoration:none;">로그아웃</a>
+      {% else %}
+      <a href="/auth/login" style="color:var(--lg-gray-500);text-decoration:none;">로그인</a>
+      {% endif %}
+    </div>
   </header>
 
   <!-- 사이드바 백드롭 (모바일용) -->
@@ -49,6 +57,14 @@
         <nav class="sidebar-nav">
           <a href="#" class="sidebar-item" onclick="openTab('/board/','게시판');return false;">게시판</a>
           <a href="#" class="sidebar-item" onclick="openTab('/notices/','공지사항');return false;">공지사항</a>
+        </nav>
+      </div>
+
+      <!-- 관리 섹션 사이드바 -->
+      <div id="sidebar-admin" class="sidebar-section" style="display:none">
+        <div class="sidebar-section-title">관리</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-item" onclick="openTab('/admin/operators','운영진 관리');return false;">운영진 관리</a>
         </nav>
       </div>
 
@@ -161,8 +177,10 @@
   function updateSidebarByUrl(url) {
     if (url.startsWith('/members') || url.startsWith('/recruit')) {
       activateSection('member');
-    } else if (url.startsWith('/board') || url.startsWith('/notices')) {
+    } else if (url.startsWith('/board') || url.startsWith('/notices') || url.startsWith('/posts')) {
       activateSection('board');
+    } else if (url.startsWith('/admin')) {
+      activateSection('admin');
     }
   }
 

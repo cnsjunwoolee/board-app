@@ -1,0 +1,101 @@
+{% extends "layout_admin.html" %}
+
+{% block page_title_heading %}{% if operator %}운영진 수정{% else %}운영진 추가{% endif %}{% endblock %}
+{% block page_breadcrumb %}{% if operator %}수정{% else %}추가{% endif %}{% endblock %}
+
+{% block admin_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">{% if operator %}운영진 수정{% else %}운영진 추가{% endif %}</h2>
+  <a href="/admin/operators" class="btn btn-outline-secondary btn-sm">목록으로</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger py-2" style="font-size:0.85rem;">{{ error }}</div>
+{% endif %}
+
+<form method="post"
+      action="{% if operator %}/admin/operators/{{ operator.id }}/edit{% else %}/admin/operators{% endif %}">
+
+  <div class="card">
+    <div class="card-body">
+
+      {% if not operator %}
+      <!-- 아이디 (신규만) -->
+      <div class="form-row-h">
+        <div class="form-lbl">아이디 <span class="text-danger">*</span></div>
+        <div class="form-val">
+          <input type="text" name="username" class="form-control form-control-sm"
+                 required placeholder="영문/숫자" style="max-width:250px;" />
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- 이름 -->
+      <div class="form-row-h">
+        <div class="form-lbl">이름 <span class="text-danger">*</span></div>
+        <div class="form-val">
+          <input type="text" name="name" class="form-control form-control-sm"
+                 value="{{ operator.name if operator else '' }}" required style="max-width:250px;" />
+        </div>
+      </div>
+
+      <!-- 비밀번호 -->
+      <div class="form-row-h">
+        <div class="form-lbl">비밀번호 {% if not operator %}<span class="text-danger">*</span>{% endif %}</div>
+        <div class="form-val">
+          <input type="password" name="password" class="form-control form-control-sm"
+                 {% if not operator %}required{% endif %}
+                 placeholder="{% if operator %}변경 시에만 입력{% else %}비밀번호 입력{% endif %}"
+                 style="max-width:250px;" />
+        </div>
+      </div>
+
+      <!-- 상태 (수정 시만) -->
+      {% if operator %}
+      <div class="form-row-h">
+        <div class="form-lbl">상태</div>
+        <div class="form-val">
+          <select name="is_active" class="form-select form-select-sm" style="max-width:150px;">
+            <option value="1" {% if operator.is_active %}selected{% endif %}>활성</option>
+            <option value="0" {% if not operator.is_active %}selected{% endif %}>비활성</option>
+          </select>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- 권한 -->
+      <div class="form-row-h" style="align-items:flex-start;">
+        <div class="form-lbl" style="padding-top:0.35rem;">권한</div>
+        <div class="form-val">
+          {% set current_perms = [] %}
+          {% if operator %}
+            {% for p in operator.permissions %}
+              {% if current_perms.append(p.menu_code) %}{% endif %}
+            {% endfor %}
+          {% endif %}
+          {% for code, label in menu_labels.items() %}
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" name="permissions" value="{{ code }}"
+                   id="perm-{{ code }}"
+                   {% if code in current_perms %}checked{% endif %} />
+            <label class="form-check-label" for="perm-{{ code }}" style="font-size:0.85rem;">
+              {{ label }}
+            </label>
+          </div>
+          {% endfor %}
+          <div class="text-muted small mt-1">선택한 메뉴에만 접근할 수 있습니다.</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="card-footer d-flex gap-2 justify-content-end">
+      <a href="/admin/operators" class="btn btn-outline-secondary">취소</a>
+      <button type="submit" class="btn btn-primary">
+        {% if operator %}수정 완료{% else %}등록{% endif %}
+      </button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
