@@ -20,5 +20,59 @@
     crossorigin="anonymous"
   ></script>
   {% block extra_js %}{% endblock %}
+
+  <script>
+  // ── iframe 내부 네비게이션에서 frame=1 유지 ──────────────
+  (function () {
+    function addFrame(url) {
+      if (!url || url.startsWith('#') || url.startsWith('javascript:') || url.includes('frame=1')) return url;
+      return url + (url.includes('?') ? '&' : '?') + 'frame=1';
+    }
+
+    // ① 링크 클릭 → href에 frame=1 추가
+    document.addEventListener('click', function (e) {
+      const a = e.target.closest('a[href]');
+      if (!a) return;
+      const href = a.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('javascript:') ||
+          a.target === '_blank' || href.match(/^https?:\/\//) || href.includes('frame=1')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href = addFrame(href);
+    }, true);  // capture 단계: onsubmit보다 먼저 처리
+
+    // ② 폼 제출 처리
+    document.addEventListener('submit', function (e) {
+      if (e.defaultPrevented) return;  // onsubmit="return confirm(...)"이 false 반환한 경우
+
+      const form = e.target;
+      const method = (form.getAttribute('method') || 'get').toLowerCase();
+
+      if (method === 'get') {
+        // GET 폼: hidden input으로 frame=1 추가
+        if (!form.querySelector('input[name="frame"]')) {
+          const inp = document.createElement('input');
+          inp.type = 'hidden'; inp.name = 'frame'; inp.value = '1';
+          form.appendChild(inp);
+        }
+        return; // 정상 제출
+      }
+
+      // POST 폼: fetch로 제출 → 리다이렉트 URL에 frame=1 붙여서 이동
+      e.preventDefault();
+      const body = new FormData(form);
+      fetch(form.action || window.location.href, {
+        method: 'POST',
+        body: body,
+        redirect: 'follow',
+        credentials: 'same-origin'
+      }).then(function (res) {
+        window.location.href = addFrame(res.url || form.action);
+      }).catch(function () {
+        form.submit(); // fetch 실패 시 일반 제출 fallback
+      });
+    });
+  })();
+  </script>
 </body>
 </html>
