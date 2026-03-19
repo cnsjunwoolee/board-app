@@ -25,6 +25,9 @@
     <div class="header-right">&#128100; 관리자</div>
   </header>
 
+  <!-- 사이드바 백드롭 (모바일용) -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
   <!-- 바디: 사이드바 + MDI 영역 -->
   <div class="app-body">
 
@@ -141,6 +144,8 @@
     `).join('');
   }
 
+  function isMobile() { return window.innerWidth <= 767; }
+
   function activateSection(section) {
     document.querySelectorAll('.sidebar-section').forEach(s => s.style.display = 'none');
     const sec = document.getElementById('sidebar-' + section);
@@ -149,6 +154,8 @@
     document.querySelectorAll('.header-nav-item').forEach(n => n.classList.remove('active'));
     const navItem = document.getElementById('nav-' + section);
     if (navItem) navItem.classList.add('active');
+    // 모바일: 섹션 클릭 시 사이드바 열기
+    if (isMobile()) openSidebar();
   }
 
   function updateSidebarByUrl(url) {
@@ -159,10 +166,45 @@
     }
   }
 
-  // 사이드바 토글
+  // 사이드바 열기/닫기
+  function openSidebar() {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('sidebarBackdrop');
+    if (isMobile()) {
+      sb.classList.add('open');
+      bd.classList.add('show');
+    } else {
+      sb.classList.remove('collapsed');
+    }
+  }
+  function closeSidebar() {
+    const sb = document.getElementById('sidebar');
+    const bd = document.getElementById('sidebarBackdrop');
+    if (isMobile()) {
+      sb.classList.remove('open');
+      bd.classList.remove('show');
+    } else {
+      sb.classList.add('collapsed');
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    // 햄버거 토글
     document.getElementById('sidebarToggle').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('collapsed');
+      const sb = document.getElementById('sidebar');
+      if (isMobile()) {
+        sb.classList.contains('open') ? closeSidebar() : openSidebar();
+      } else {
+        sb.classList.toggle('collapsed');
+      }
+    });
+    // 백드롭 클릭 시 닫기
+    document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebar);
+    // 사이드바 메뉴 클릭 후 모바일이면 자동 닫기
+    document.getElementById('sidebar').addEventListener('click', (e) => {
+      if (e.target.closest('.sidebar-item') && isMobile()) {
+        setTimeout(closeSidebar, 150);
+      }
     });
   });
   </script>

@@ -5,7 +5,6 @@
 body.mdi-shell { padding-top: 50px; overflow: hidden; height: 100vh; }
 body.mdi-frame { padding-top: 0; background: #f5f6fa; }
 
-.app-body { display: flex; height: calc(100vh - 50px - 36px); }
 .app-sidebar.collapsed { width: 0; min-width: 0; }
 
 /* MDI 컨테이너 */
@@ -124,24 +123,15 @@ body.mdi-frame { padding-top: 0; background: #f5f6fa; }
    기본 레이아웃
 ────────────────────────────────────────── */
 
-body {
-  padding-top: 70px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-size: 15px;
-}
-
-main.container {
-  flex: 1;
-}
-
 /* ── 앱 전체 레이아웃 (PLM 스타일) ── */
 
 body {
   padding-top: 50px;
   margin: 0;
+  font-size: 15px;
 }
+
+main.container { flex: 1; }
 
 .app-header {
   position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
@@ -181,7 +171,7 @@ body {
 
 /* ── 바디 2단 레이아웃 ── */
 
-.app-body { display: flex; min-height: calc(100vh - 50px - 44px); }
+.app-body { display: flex; height: calc(100vh - 50px - 36px); }
 
 .app-sidebar {
   width: 200px; min-width: 200px;
@@ -261,15 +251,39 @@ body {
 
 /* ── 모바일 ── */
 
+/* 사이드바 오버레이 백드롭 */
+.sidebar-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 998;
+  background: rgba(0,0,0,0.35); top: 50px;
+}
+.sidebar-backdrop.show { display: block; }
+
 @media (max-width: 767px) {
+  .app-header { padding: 0 0.5rem; }
+  .header-brand { font-size: 0.9rem; margin-right: 0.5rem; }
+  .header-nav-item { padding: 0 0.6rem; font-size: 0.78rem; }
+  .header-right { font-size: 0.75rem; }
+
+  .app-body { height: calc(100vh - 50px - 30px); }
+
   .app-sidebar {
     width: 0; min-width: 0;
     position: fixed; z-index: 999;
-    height: 100vh; top: 50px; left: 0;
+    height: calc(100vh - 50px); top: 50px; left: 0;
     box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+    transition: width 0.25s ease, min-width 0.25s ease;
   }
-  .app-sidebar.open { width: 200px; min-width: 200px; }
-  .header-nav-item { padding: 0 0.75rem; font-size: 0.8rem; }
+  .app-sidebar.open { width: 220px; min-width: 220px; }
+
+  .app-footer { height: 30px; font-size: 0.7rem; }
+
+  .mdi-tabbar { height: 32px; }
+  .mdi-tab { height: 32px; padding: 0 0.6rem; font-size: 0.75rem; }
+  .tab-close { font-size: 0.85rem; }
+
+  .page-header { padding: 0.5rem 0.75rem 0.4rem; }
+  .page-title { font-size: 0.95rem; }
+  .page-breadcrumb { font-size: 0.7rem; }
   .page-body { padding: 0.75rem; }
 }
 
@@ -464,33 +478,30 @@ body {
 ────────────────────────────────────────── */
 
 @media (max-width: 767px) {
-  body {
-    padding-top: 62px;
-    font-size: 14px;
-  }
+  body.mdi-shell { padding-top: 50px; font-size: 14px; }
+  body.mdi-frame { padding-top: 0; font-size: 14px; }
 
   .container {
     padding-left: 14px;
     padding-right: 14px;
   }
 
-  h2.h5 {
-    font-size: 1rem;
-  }
+  h2.h5 { font-size: 1rem; }
 
-  /* 게시글 상세 제목 */
   .post-detail-title {
     font-size: 1.15rem;
     word-break: break-word;
   }
 
-  /* 버튼 간격 */
-  .btn {
-    font-size: 0.85rem;
-  }
+  .btn { font-size: 0.85rem; }
 
-  /* 댓글 폼 */
-  textarea.form-control {
-    font-size: 0.9rem;
-  }
+  textarea.form-control { font-size: 0.9rem; }
+
+  /* 히어로 모바일 */
+  .hero-section { height: 20vh; min-height: 130px; }
+  .hero-title { font-size: 1.4rem; }
+  .hero-subtitle { font-size: 0.8rem; }
+  .hero-tag { font-size: 0.7rem; padding: 0.15rem 0.5rem; }
+  .hero-icon { display: none; }
+  .hero-binary { display: none; }
 }
