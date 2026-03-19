@@ -50,7 +50,7 @@
       {% if members %}
         {% for member in members %}
         <tr>
-          <td class="text-center text-muted">{{ member.id }}</td>
+          <td class="text-center text-muted">{{ (page - 1) * 20 + loop.index }}</td>
           <td>{{ member.name }}</td>
           <td class="text-center">{{ member.grade or '-' }}</td>
           <td class="text-center">{{ member.phone or '-' }}</td>
