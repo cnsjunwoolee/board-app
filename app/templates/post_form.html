@@ -1,6 +1,9 @@
-{% extends "base.html" %}
+{% extends "layout_board.html" %}
 
-{% block content %}
+{% block page_title_heading %}{{ "게시글 수정" if post else "새 글 작성" }}{% endblock %}
+{% block page_breadcrumb %}{{ "수정" if post else "새 글 작성" }}{% endblock %}
+
+{% block board_content %}
 <div class="row justify-content-center">
   <div class="col-lg-7">
 
@@ -70,7 +73,7 @@
 
       <!-- 버튼 -->
       <div class="d-flex justify-content-between">
-        <a href="{{ '/posts/' ~ post.id if post else '/' }}" class="btn btn-outline-secondary">취소</a>
+        <a href="{{ '/posts/' ~ post.id if post else '/board/' }}" class="btn btn-outline-secondary">취소</a>
         <button type="submit" class="btn btn-primary">저장</button>
       </div>
 

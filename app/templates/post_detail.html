@@ -1,6 +1,9 @@
-{% extends "base.html" %}
+{% extends "layout_board.html" %}
 
-{% block content %}
+{% block page_title_heading %}{{ post.title }}{% endblock %}
+{% block page_breadcrumb %}게시글 상세{% endblock %}
+
+{% block board_content %}
 <div class="row justify-content-center">
   <div class="col-lg-8">
 
@@ -23,7 +26,7 @@
 
     <!-- 버튼 영역 -->
     <div class="d-flex justify-content-between align-items-center mt-3 mb-5">
-      <a href="/" class="btn btn-outline-secondary btn-sm">목록으로</a>
+      <a href="/board/" class="btn btn-outline-secondary btn-sm">목록으로</a>
       <div class="d-flex gap-2">
         <a href="/posts/{{ post.id }}/edit" class="btn btn-outline-primary btn-sm">수정</a>
         <form action="/posts/{{ post.id }}/delete" method="post"
