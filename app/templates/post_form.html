@@ -13,66 +13,41 @@
       action="{{ '/posts/' ~ post.id ~ '/edit' if post else '/posts' }}"
       method="post"
     >
-      <!-- 제목 -->
-      <div class="mb-3">
-        <label for="title" class="form-label fw-semibold">제목 <span class="text-danger">*</span></label>
-        <input
-          type="text"
-          id="title"
-          name="title"
-          class="form-control"
-          value="{{ post.title if post else '' }}"
-          required
-          placeholder="제목을 입력하세요"
-        />
+      <!-- 제목 + 작성자 -->
+      <div class="form-pair">
+        <div class="form-row-h" style="flex:2;">
+          <div class="form-lbl">제목 <span class="text-danger">*</span></div>
+          <div class="form-val">
+            <input type="text" id="title" name="title" class="form-control form-control-sm"
+                   value="{{ post.title if post else '' }}" required placeholder="제목을 입력하세요" />
+          </div>
+        </div>
+        <div class="form-row-h" style="flex:1;">
+          <div class="form-lbl">작성자 <span class="text-danger">*</span></div>
+          <div class="form-val">
+            {% if post %}
+            <input type="text" id="author" class="form-control form-control-sm"
+                   value="{{ post.author }}" disabled />
+            <input type="hidden" name="author" value="{{ post.author }}" />
+            {% else %}
+            <input type="text" id="author" name="author" class="form-control form-control-sm"
+                   value="" required placeholder="작성자명" />
+            {% endif %}
+          </div>
+        </div>
       </div>
 
-      <!-- 작성자 -->
-      {% if post %}
-        <!-- 수정 시: 기존 작성자 유지, 입력 비활성화 -->
-        <div class="mb-3">
-          <label for="author" class="form-label fw-semibold">작성자</label>
-          <input
-            type="text"
-            id="author"
-            class="form-control"
-            value="{{ post.author }}"
-            disabled
-          />
-          <!-- disabled 필드는 form 전송에서 제외되므로 hidden으로 실제 값 전송 -->
-          <input type="hidden" name="author" value="{{ post.author }}" />
+      <!-- 내용 (전체 너비) -->
+      <div class="form-row-h form-row-top">
+        <div class="form-lbl">내용 <span class="text-danger">*</span></div>
+        <div class="form-val">
+          <textarea id="content" name="content" class="form-control form-control-sm"
+                    rows="10" required placeholder="내용을 입력하세요">{{ post.content if post else '' }}</textarea>
         </div>
-      {% else %}
-        <!-- 신규 작성 시: 작성자 입력 -->
-        <div class="mb-3">
-          <label for="author" class="form-label fw-semibold">작성자 <span class="text-danger">*</span></label>
-          <input
-            type="text"
-            id="author"
-            name="author"
-            class="form-control"
-            value=""
-            required
-            placeholder="작성자명을 입력하세요"
-          />
-        </div>
-      {% endif %}
-
-      <!-- 내용 -->
-      <div class="mb-4">
-        <label for="content" class="form-label fw-semibold">내용 <span class="text-danger">*</span></label>
-        <textarea
-          id="content"
-          name="content"
-          class="form-control"
-          rows="10"
-          required
-          placeholder="내용을 입력하세요"
-        >{{ post.content if post else '' }}</textarea>
       </div>
 
       <!-- 버튼 -->
-      <div class="d-flex justify-content-between">
+      <div class="d-flex justify-content-between mt-3">
         <a href="{{ '/posts/' ~ post.id if post else '/board/' }}" class="btn btn-outline-secondary">취소</a>
         <button type="submit" class="btn btn-primary">저장</button>
       </div>

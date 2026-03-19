@@ -95,6 +95,18 @@ body.mdi-frame { padding-top: 0; background: #f5f6fa; }
 .hero-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .hero-tag { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 1rem; padding: 0.2rem 0.6rem; font-size: 0.78rem; }
 
+/* ── 공통 폼 레이아웃 ── */
+.form-row-h { display: flex; align-items: center; margin-bottom: 0.65rem; }
+.form-row-h .form-lbl { width: 80px; min-width: 80px; font-size: 0.82rem; font-weight: 600; color: #495057; white-space: nowrap; }
+.form-row-h .form-val { flex: 1; min-width: 0; }
+.form-pair { display: flex; gap: 1.5rem; }
+.form-pair .form-row-h { flex: 1; min-width: 0; }
+.form-row-h.form-row-top { align-items: flex-start; }
+.form-row-h.form-row-top .form-lbl { padding-top: 0.35rem; }
+@media (max-width: 767px) {
+  .form-pair { flex-direction: column; gap: 0; }
+}
+
 /* 홈 카드 */
 .home-card { background: #fff; border: 1px solid #dee2e6; border-radius: 0.5rem; overflow: hidden; }
 .home-card-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8f9fa; border-bottom: 1px solid #dee2e6; font-weight: 600; font-size: 0.9rem; }

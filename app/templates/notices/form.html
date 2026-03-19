@@ -15,27 +15,34 @@
       action="{% if notice %}/notices/{{ notice.id }}/edit{% else %}/notices/{% endif %}"
       id="notice-form">
 
-  <div class="mb-3">
-    <label for="title" class="form-label fw-semibold">제목 <span class="text-danger">*</span></label>
-    <input type="text" id="title" name="title" class="form-control"
-           value="{{ notice.title if notice else '' }}" required>
+  <!-- 제목 + 작성자 -->
+  <div class="form-pair">
+    <div class="form-row-h" style="flex:2;">
+      <div class="form-lbl">제목 <span class="text-danger">*</span></div>
+      <div class="form-val">
+        <input type="text" id="title" name="title" class="form-control form-control-sm"
+               value="{{ notice.title if notice else '' }}" required>
+      </div>
+    </div>
+    <div class="form-row-h" style="flex:1;">
+      <div class="form-lbl">작성자 <span class="text-danger">*</span></div>
+      <div class="form-val">
+        <input type="text" id="author" name="author" class="form-control form-control-sm"
+               value="{{ notice.author if notice else '' }}" required>
+      </div>
+    </div>
   </div>
 
-  <div class="mb-3">
-    <label for="author" class="form-label fw-semibold">작성자 <span class="text-danger">*</span></label>
-    <input type="text" id="author" name="author" class="form-control"
-           value="{{ notice.author if notice else '' }}" required>
+  <!-- 내용 (전체 너비) -->
+  <div class="form-row-h form-row-top">
+    <div class="form-lbl">내용</div>
+    <div class="form-val">
+      <div id="editor" style="min-height: 300px; background: #fff;"></div>
+      <input type="hidden" name="content" id="content-input">
+    </div>
   </div>
 
-  <div class="mb-3">
-    <label class="form-label fw-semibold">내용</label>
-    <!-- Quill 에디터 컨테이너 -->
-    <div id="editor" style="min-height: 300px; background: #fff;"></div>
-    <!-- hidden input으로 내용 전달 -->
-    <input type="hidden" name="content" id="content-input">
-  </div>
-
-  <div class="d-flex gap-2">
+  <div class="d-flex gap-2 mt-3">
     <button type="submit" class="btn btn-primary">저장</button>
     <a href="{% if notice %}/notices/{{ notice.id }}{% else %}/notices/{% endif %}"
        class="btn btn-outline-secondary">취소</a>
