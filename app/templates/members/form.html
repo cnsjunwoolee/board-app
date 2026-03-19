@@ -16,43 +16,74 @@
   action="{% if member %}/members/{{ member.id }}/edit{% else %}/members/{% endif %}"
   enctype="multipart/form-data"
 >
+  <style>
+    .form-row-h { display: flex; align-items: center; margin-bottom: 0.75rem; }
+    .form-row-h .form-lbl { width: 90px; min-width: 90px; font-size: 0.85rem; font-weight: 600; color: #495057; }
+    .form-row-h .form-val { flex: 1; min-width: 0; }
+    @media (max-width: 575px) {
+      .form-row-h { flex-wrap: wrap; }
+      .form-row-h .form-lbl { width: 100%; margin-bottom: 0.25rem; }
+    }
+  </style>
+
   <div class="card">
     <div class="card-body">
-
       <div class="row">
         <!-- 좌측: 입력 필드 -->
         <div class="col-md-8">
-          <!-- 1행: 이름 + 생년월일 -->
-          <div class="row mb-3">
-            <div class="col-sm-6">
-              <label for="name" class="form-label fw-semibold">이름 <span class="text-danger">*</span></label>
-              <input type="text" id="name" name="name" class="form-control"
+
+          <div class="form-row-h">
+            <div class="form-lbl">이름 <span class="text-danger">*</span></div>
+            <div class="form-val">
+              <input type="text" id="name" name="name" class="form-control form-control-sm"
                      value="{{ member.name if member else '' }}" required />
             </div>
-            <div class="col-sm-6">
-              <label for="birth_date" class="form-label fw-semibold">생년월일</label>
-              <input type="date" id="birth_date" name="birth_date" class="form-control"
+          </div>
+
+          <div class="form-row-h">
+            <div class="form-lbl">생년월일</div>
+            <div class="form-val">
+              <input type="date" id="birth_date" name="birth_date" class="form-control form-control-sm"
                      value="{{ member.birth_date if member and member.birth_date else '' }}" />
             </div>
           </div>
 
-          <!-- 2행: 학년 + 평가점수 -->
-          <div class="row mb-3">
-            <div class="col-sm-6">
-              <label for="grade" class="form-label fw-semibold">학년</label>
-              <select id="grade" name="grade" class="form-select">
+          <div class="form-row-h">
+            <div class="form-lbl">학년</div>
+            <div class="form-val">
+              <select id="grade" name="grade" class="form-select form-select-sm">
                 <option value="">선택 안 함</option>
                 <option value="1학년" {% if member and member.grade == '1학년' %}selected{% endif %}>1학년</option>
                 <option value="2학년" {% if member and member.grade == '2학년' %}selected{% endif %}>2학년</option>
                 <option value="3학년" {% if member and member.grade == '3학년' %}selected{% endif %}>3학년</option>
               </select>
             </div>
-            <div class="col-sm-6">
-              <label class="form-label fw-semibold">평가점수</label>
-              <div id="star-rating" class="d-flex align-items-center gap-1 mt-1">
-                {% set current_score = member.score if member else 0 %}
+          </div>
+
+          <div class="form-row-h">
+            <div class="form-lbl">연락처</div>
+            <div class="form-val">
+              <input type="text" id="phone" name="phone" class="form-control form-control-sm"
+                     placeholder="010-0000-0000"
+                     value="{{ member.phone if member and member.phone else '' }}" />
+            </div>
+          </div>
+
+          <div class="form-row-h">
+            <div class="form-lbl">이메일</div>
+            <div class="form-val">
+              <input type="email" id="email" name="email" class="form-control form-control-sm"
+                     value="{{ member.email if member and member.email else '' }}" />
+            </div>
+          </div>
+
+          <div class="form-row-h">
+            <div class="form-lbl">평가점수</div>
+            <div class="form-val">
+              {% set current_score = member.score if member else 0 %}
+              <div class="d-flex align-items-center gap-1">
                 {% for i in range(1, 6) %}
-                <span class="star-btn" data-value="{{ i }}" style="font-size:1.6rem; cursor:pointer; color:{{ '#ffc107' if i <= current_score else '#dee2e6' }};">&#9733;</span>
+                <span class="star-btn" data-value="{{ i }}" style="font-size:1.4rem; cursor:pointer; color:{{ '#ffc107' if i <= current_score else '#dee2e6' }};">&#9733;</span>
                 {% endfor %}
                 <span id="score-label" class="ms-2 text-muted small">{{ current_score }}점</span>
               </div>
@@ -60,48 +91,35 @@
             </div>
           </div>
 
-          <!-- 3행: 연락처 + 이메일 -->
-          <div class="row mb-3">
-            <div class="col-sm-6">
-              <label for="phone" class="form-label fw-semibold">연락처</label>
-              <input type="text" id="phone" name="phone" class="form-control"
-                     placeholder="010-0000-0000"
-                     value="{{ member.phone if member and member.phone else '' }}" />
-            </div>
-            <div class="col-sm-6">
-              <label for="email" class="form-label fw-semibold">이메일</label>
-              <input type="email" id="email" name="email" class="form-control"
-                     value="{{ member.email if member and member.email else '' }}" />
+          <div class="form-row-h" style="align-items:flex-start;">
+            <div class="form-lbl" style="padding-top:0.35rem;">메모</div>
+            <div class="form-val">
+              <textarea id="memo" name="memo" class="form-control form-control-sm"
+                        rows="3">{{ member.memo if member and member.memo else '' }}</textarea>
             </div>
           </div>
 
-          <!-- 메모 -->
-          <div class="mb-3">
-            <label for="memo" class="form-label fw-semibold">메모</label>
-            <textarea id="memo" name="memo" class="form-control"
-                      rows="3">{{ member.memo if member and member.memo else '' }}</textarea>
-          </div>
         </div>
 
-        <!-- 우측: 사진 영역 -->
+        <!-- 우측: 사진 영역 (여권 사이즈 35mm x 45mm = 비율 7:9) -->
         <div class="col-md-4">
-          <label class="form-label fw-semibold">사진</label>
           <div class="text-center">
+            <div class="form-lbl mb-2" style="text-align:center; width:100%;">사진</div>
             <div id="photo-preview-box"
-                 style="width:132px; height:170px; margin:0 auto 0.75rem; border:2px dashed #ced4da; border-radius:4px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#f8f9fa;">
+                 style="width:105px; height:135px; margin:0 auto 0.75rem; border:2px dashed #ced4da; border-radius:4px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#f8f9fa;">
               {% if member and member.photo_path %}
               <img id="photo-preview" src="/static/{{ member.photo_path }}" alt="사진"
                    style="width:100%; height:100%; object-fit:cover;" />
               {% else %}
               <img id="photo-preview" src="" alt=""
                    style="width:100%; height:100%; object-fit:cover; display:none;" />
-              <span id="photo-placeholder" class="text-muted small">사진 미등록</span>
+              <span id="photo-placeholder" class="text-muted" style="font-size:0.75rem;">사진 미등록</span>
               {% endif %}
             </div>
             <input type="file" id="photo" name="photo" class="form-control form-control-sm"
-                   accept="image/*" style="max-width:180px; margin:0 auto;" />
+                   accept="image/*" style="max-width:160px; margin:0 auto;" />
             {% if member and member.photo_path %}
-            <div class="text-muted small mt-1">새 사진 선택 시 교체됩니다</div>
+            <div class="text-muted small mt-1">새 사진 선택 시 교체</div>
             {% endif %}
           </div>
         </div>
@@ -117,7 +135,7 @@
   </div>
 
   <script>
-  // 사진 미리보기
+  // 사진 미리보기 — 여권 비율(7:9)로 캔버스에 크롭하여 표시
   document.getElementById('photo').addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
