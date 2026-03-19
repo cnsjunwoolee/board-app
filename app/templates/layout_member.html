@@ -15,15 +15,6 @@
 {% endblock %}
 
 {% block content %}{% block frame_content %}
-<!-- 브레드크럼 탭 바 -->
-<div class="breadcrumb-tabs">
-  <a href="#" class="breadcrumb-tab" onclick="window.parent.openTab('/home','Home');return false;">Home</a>
-  <div class="breadcrumb-tab active">
-    {% block page_title %}페이지{% endblock %}
-    <span class="tab-close">&#215;</span>
-  </div>
-</div>
-
 <!-- 페이지 헤더 -->
 <div class="page-header">
   <h1 class="page-title">&#9733; {% block page_title_heading %}{% endblock %}</h1>
