@@ -33,6 +33,26 @@
 </form>
 
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<style>
+  .img-resize-overlay {
+    position: fixed;
+    border: 2px solid #1a56db;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 9999;
+  }
+  .img-resize-handle {
+    position: absolute;
+    width: 10px; height: 10px;
+    background: #1a56db;
+    border: 1px solid #fff;
+    border-radius: 2px;
+    pointer-events: all;
+    z-index: 10000;
+  }
+  #editor img { cursor: pointer; }
+  #editor img.img-selected { outline: 2px solid #1a56db; }
+</style>
 <script>
 const quill = new Quill('#editor', {
   theme: 'snow',
@@ -60,6 +80,97 @@ quill.root.innerHTML = {{ banner.content | tojson }};
 document.getElementById('banner-form').addEventListener('submit', function () {
   document.getElementById('content-input').value = quill.root.innerHTML;
 });
+
+// ── 이미지 리사이즈 ─────────────────────────────────────
+(function () {
+  let activeImg = null, overlay = null;
+  let startX, startY, startW, startH, currentDir;
+
+  const HANDLES = [
+    { dir: 'nw', top: '-5px', left: '-5px',  cursor: 'nw-resize' },
+    { dir: 'ne', top: '-5px', right: '-5px', cursor: 'ne-resize' },
+    { dir: 'se', bottom: '-5px', right: '-5px', cursor: 'se-resize' },
+    { dir: 'sw', bottom: '-5px', left: '-5px',  cursor: 'sw-resize' },
+  ];
+
+  function showOverlay(img) {
+    removeOverlay();
+    activeImg = img;
+    img.classList.add('img-selected');
+
+    overlay = document.createElement('div');
+    overlay.className = 'img-resize-overlay';
+    document.body.appendChild(overlay);
+
+    HANDLES.forEach(({ dir, cursor, ...pos }) => {
+      const h = document.createElement('div');
+      h.className = 'img-resize-handle';
+      h.dataset.dir = dir;
+      Object.assign(h.style, pos, { cursor });
+      h.addEventListener('mousedown', onMouseDown);
+      overlay.appendChild(h);
+    });
+
+    updateOverlay();
+  }
+
+  function updateOverlay() {
+    if (!activeImg || !overlay) return;
+    const r = activeImg.getBoundingClientRect();
+    Object.assign(overlay.style, {
+      left: r.left + 'px', top: r.top + 'px',
+      width: r.width + 'px', height: r.height + 'px',
+    });
+  }
+
+  function removeOverlay() {
+    if (overlay) { overlay.remove(); overlay = null; }
+    if (activeImg) { activeImg.classList.remove('img-selected'); activeImg = null; }
+  }
+
+  function onMouseDown(e) {
+    e.preventDefault(); e.stopPropagation();
+    currentDir = e.target.dataset.dir;
+    startX = e.clientX; startY = e.clientY;
+    startW = activeImg.offsetWidth; startH = activeImg.offsetHeight;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  function onMouseMove(e) {
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    let w = startW, h = startH;
+    if (currentDir.includes('e')) w = Math.max(30, startW + dx);
+    if (currentDir.includes('w')) w = Math.max(30, startW - dx);
+    if (currentDir.includes('s')) h = Math.max(30, startH + dy);
+    if (currentDir.includes('n')) h = Math.max(30, startH - dy);
+    activeImg.style.width  = w + 'px';
+    activeImg.style.height = h + 'px';
+    updateOverlay();
+  }
+
+  function onMouseUp() {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  }
+
+  // 이미지 클릭 시 핸들 표시
+  quill.root.addEventListener('click', function (e) {
+    if (e.target.tagName === 'IMG') showOverlay(e.target);
+    else removeOverlay();
+  });
+
+  // 에디터 바깥 클릭 시 핸들 제거
+  document.addEventListener('click', function (e) {
+    if (overlay && !overlay.contains(e.target) && !quill.root.contains(e.target)) {
+      removeOverlay();
+    }
+  });
+
+  // 스크롤 / 창 크기 변경 시 위치 동기화
+  window.addEventListener('scroll', updateOverlay, true);
+  window.addEventListener('resize', updateOverlay);
+})();
 </script>
 
 {% endblock %}
