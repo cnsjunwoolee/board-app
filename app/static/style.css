@@ -61,6 +61,33 @@ body.mdi-frame { padding-top: 0; background: #f5f6fa; }
     linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+/* 히어로 장식 아이콘 */
+.hero-deco { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.hero-icon {
+  position: absolute; color: rgba(255,255,255,0.12);
+}
+.hero-icon-1 { width: 70px; top: 12%; right: 8%; animation: heroFloat 6s ease-in-out infinite; }
+.hero-icon-2 { width: 100px; bottom: 18%; right: 22%; animation: heroFloat 5s ease-in-out 1s infinite; }
+.hero-icon-3 { width: 40px; top: 15%; right: 35%; animation: heroFloat 7s ease-in-out 0.5s infinite; }
+.hero-icon-4 { width: 75px; bottom: 22%; right: 50%; animation: heroFloat 5.5s ease-in-out 2s infinite; }
+.hero-icon-5 { width: 55px; top: 8%; right: 60%; animation: heroFloat 8s ease-in-out 1.5s infinite; }
+.hero-binary {
+  position: absolute; font-family: 'Courier New', monospace;
+  font-size: 0.7rem; color: rgba(255,255,255,0.1); letter-spacing: 0.15em; font-weight: 700;
+}
+.hero-binary-1 { top: 70%; right: 10%; animation: heroBinary 4s steps(1) infinite; }
+.hero-binary-2 { top: 25%; right: 75%; animation: heroBinary 3s steps(1) 1.5s infinite; }
+
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes heroBinary {
+  0% { opacity: 0.1; }
+  50% { opacity: 0.25; }
+  100% { opacity: 0.1; }
+}
+
 .hero-content { position: relative; z-index: 1; padding: 0 2rem; color: #fff; }
 .hero-badge { display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 2rem; padding: 0.15rem 0.75rem; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; }
 .hero-title { font-size: 2rem; font-weight: 800; margin: 0 0 0.25rem; letter-spacing: -0.02em; }
