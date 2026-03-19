@@ -1,0 +1,64 @@
+{% extends "layout_frame.html" %}
+{% block frame_content %}
+
+<!-- 히어로 섹션 -->
+<div class="hero-section">
+  <div class="hero-content">
+    <div class="hero-badge">전자공학 동아리</div>
+    <h1 class="hero-title">ACT 동아리</h1>
+    <p class="hero-subtitle">공학 동아리 &middot; HW &amp; SW 개발 &middot; 대신고등학교</p>
+    <div class="hero-tags">
+      <span class="hero-tag">&#9889; 전자공학</span>
+      <span class="hero-tag">&#128187; SW 개발</span>
+      <span class="hero-tag">&#128295; HW 제작</span>
+      <span class="hero-tag">&#129309; 팀 프로젝트</span>
+    </div>
+  </div>
+</div>
+
+<!-- 최근 공지사항 + 게시판 (2열) -->
+<div class="container-fluid px-4 py-3">
+  <div class="row g-4">
+    <!-- 공지사항 최근 5개 -->
+    <div class="col-md-6">
+      <div class="home-card">
+        <div class="home-card-header">
+          <span>&#128226; 공지사항</span>
+          <a href="#" onclick="window.parent.openTab('/notices/','공지사항');return false;" class="home-card-more">더보기</a>
+        </div>
+        <ul class="home-list">
+          {% for notice in recent_notices %}
+          <li>
+            <a href="#" onclick="window.parent.openTab('/notices/{{ notice.id }}','{{ notice.title }}');return false;">{{ notice.title }}</a>
+            <span class="home-list-date">{{ notice.created_at.strftime('%m-%d') }}</span>
+          </li>
+          {% else %}
+          <li class="empty">등록된 공지사항이 없습니다.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- 게시판 최근 5개 -->
+    <div class="col-md-6">
+      <div class="home-card">
+        <div class="home-card-header">
+          <span>&#128203; 게시판</span>
+          <a href="#" onclick="window.parent.openTab('/board/','게시판');return false;" class="home-card-more">더보기</a>
+        </div>
+        <ul class="home-list">
+          {% for post in recent_posts %}
+          <li>
+            <a href="#" onclick="window.parent.openTab('/posts/{{ post.id }}','{{ post.title }}');return false;">{{ post.title }}</a>
+            <span class="home-list-date">{{ post.created_at.strftime('%m-%d') }}</span>
+          </li>
+          {% else %}
+          <li class="empty">등록된 게시글이 없습니다.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -15,20 +15,20 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 # 1. GET /notices/ - 공지사항 목록 (최신순)
 @notice_router.get("/")
-def list_notices(request: Request, db: Session = Depends(get_db)):
+def list_notices(request: Request, frame: bool = False, db: Session = Depends(get_db)):
     notices = db.query(Notice).order_by(Notice.created_at.desc()).all()
     return templates.TemplateResponse(
         "notices/list.html",
-        {"request": request, "notices": notices},
+        {"request": request, "notices": notices, "is_frame": frame},
     )
 
 
 # 2. GET /notices/new - 공지사항 작성 폼
 @notice_router.get("/new")
-def new_notice_form(request: Request):
+def new_notice_form(request: Request, frame: bool = False):
     return templates.TemplateResponse(
         "notices/form.html",
-        {"request": request, "notice": None},
+        {"request": request, "notice": None, "is_frame": frame},
     )
 
 
@@ -49,25 +49,25 @@ def create_notice(
 
 # 4. GET /notices/{id} - 공지사항 상세
 @notice_router.get("/{notice_id}")
-def get_notice(notice_id: int, request: Request, db: Session = Depends(get_db)):
+def get_notice(notice_id: int, request: Request, frame: bool = False, db: Session = Depends(get_db)):
     notice = db.query(Notice).filter(Notice.id == notice_id).first()
     if notice is None:
         raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다.")
     return templates.TemplateResponse(
         "notices/detail.html",
-        {"request": request, "notice": notice},
+        {"request": request, "notice": notice, "is_frame": frame},
     )
 
 
 # 5. GET /notices/{id}/edit - 공지사항 수정 폼
 @notice_router.get("/{notice_id}/edit")
-def edit_notice_form(notice_id: int, request: Request, db: Session = Depends(get_db)):
+def edit_notice_form(notice_id: int, request: Request, frame: bool = False, db: Session = Depends(get_db)):
     notice = db.query(Notice).filter(Notice.id == notice_id).first()
     if notice is None:
         raise HTTPException(status_code=404, detail="공지사항을 찾을 수 없습니다.")
     return templates.TemplateResponse(
         "notices/form.html",
-        {"request": request, "notice": notice},
+        {"request": request, "notice": notice, "is_frame": frame},
     )
 
 

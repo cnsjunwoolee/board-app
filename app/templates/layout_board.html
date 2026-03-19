@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "layout_frame.html" if is_frame else "base.html" %}
 
 {% block sidebar %}
 <div class="sidebar-section-title">게시판</div>
@@ -14,10 +14,10 @@
 </nav>
 {% endblock %}
 
-{% block content %}
+{% block content %}{% block frame_content %}
 <!-- 브레드크럼 탭 바 -->
 <div class="breadcrumb-tabs">
-  <a href="/" class="breadcrumb-tab">Home</a>
+  <a href="#" class="breadcrumb-tab" onclick="window.parent.openTab('/home','Home');return false;">Home</a>
   <div class="breadcrumb-tab active">
     {% block page_title %}페이지{% endblock %}
     <span class="tab-close">&#215;</span>
@@ -34,4 +34,4 @@
 <div class="page-body">
   {% block board_content %}{% endblock %}
 </div>
-{% endblock %}
+{% endblock %}{% endblock %}

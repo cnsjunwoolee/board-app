@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ACT 동아리</title>
   <link
     rel="stylesheet"
@@ -12,40 +12,58 @@
   />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
-<body>
+<body class="mdi-shell">
 
-  <!-- 상단 헤더 -->
+  <!-- 고정 헤더 -->
   <header class="app-header">
-    <button id="sidebarToggle" class="header-toggle" type="button" aria-label="사이드바 토글">&#9776;</button>
-    <a href="/" class="header-brand">ACT 동아리</a>
+    <button id="sidebarToggle" class="header-toggle">&#9776;</button>
+    <a href="#" class="header-brand" onclick="openTab('/home','Home');return false;">ACT 동아리</a>
     <nav class="header-nav">
-      <a href="/members/"
-         class="header-nav-item {% if request.url.path.startswith('/members') or request.url.path.startswith('/recruit') %}active{% endif %}">
-        회원모집
-      </a>
-      <a href="/board/"
-         class="header-nav-item {% if request.url.path.startswith('/board') or request.url.path.startswith('/notices') or request.url.path.startswith('/posts') %}active{% endif %}">
-        게시판
-      </a>
+      <a href="#" class="header-nav-item" id="nav-member" onclick="activateSection('member');return false;">회원모집</a>
+      <a href="#" class="header-nav-item" id="nav-board" onclick="activateSection('board');return false;">게시판</a>
     </nav>
     <div class="header-right">&#128100; 관리자</div>
   </header>
 
-  <!-- 바디: 사이드바 + 메인 -->
+  <!-- 바디: 사이드바 + MDI 영역 -->
   <div class="app-body">
+
+    <!-- 사이드바 (Shell 소유, 섹션별로 표시) -->
     <aside id="sidebar" class="app-sidebar">
-      {% block sidebar %}{% endblock %}
+
+      <!-- 회원모집 섹션 사이드바 -->
+      <div id="sidebar-member" class="sidebar-section" style="display:none">
+        <div class="sidebar-section-title">회원모집</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-item" onclick="openTab('/members/','회원조회');return false;">회원조회</a>
+          <a href="#" class="sidebar-item" onclick="openTab('/recruit/banner','회원모집 배너');return false;">회원모집 배너</a>
+        </nav>
+      </div>
+
+      <!-- 게시판 섹션 사이드바 -->
+      <div id="sidebar-board" class="sidebar-section" style="display:none">
+        <div class="sidebar-section-title">게시판</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-item" onclick="openTab('/board/','게시판');return false;">게시판</a>
+          <a href="#" class="sidebar-item" onclick="openTab('/notices/','공지사항');return false;">공지사항</a>
+        </nav>
+      </div>
+
     </aside>
-    <main class="app-main">
-      {% block content %}{% endblock %}
-    </main>
+
+    <!-- MDI 콘텐츠 영역 -->
+    <div class="mdi-container" id="mdiContainer">
+      <!-- 탭바 -->
+      <div class="mdi-tabbar" id="mdiTabBar"></div>
+      <!-- iframe 패널 영역 -->
+      <div class="mdi-panels" id="mdiPanels"></div>
+    </div>
+
   </div>
 
   <!-- 푸터 -->
-  <footer class="border-top py-3 bg-light">
-    <div class="container text-center text-muted small">
-      게시판 앱 &nbsp;|&nbsp; 최종 배포: {{ deployed_at }}
-    </div>
+  <footer class="app-footer">
+    ACT 동아리 &nbsp;|&nbsp; 최종 배포: {{ deployed_at }}
   </footer>
 
   <script
@@ -54,30 +72,99 @@
     crossorigin="anonymous"
   ></script>
   <script>
-    (function () {
-      var toggle = document.getElementById('sidebarToggle');
-      var sidebar = document.getElementById('sidebar');
-      var main = document.querySelector('.app-main');
-      var isMobile = function () { return window.innerWidth < 768; };
+  // ── MDI 탭 관리 ──────────────────────────────
+  let tabs = [];
+  let activeTabId = null;
 
-      toggle.addEventListener('click', function () {
-        if (isMobile()) {
-          sidebar.classList.toggle('open');
-        } else {
-          sidebar.classList.toggle('collapsed');
-          main.classList.toggle('sidebar-collapsed');
-        }
-      });
+  // 초기 Home 탭
+  window.addEventListener('DOMContentLoaded', () => {
+    openTab('/home', 'Home', false); // false = 닫기 불가
+  });
 
-      // 모바일에서 사이드바 외부 클릭 시 닫기
-      document.addEventListener('click', function (e) {
-        if (isMobile() && sidebar.classList.contains('open')) {
-          if (!sidebar.contains(e.target) && e.target !== toggle) {
-            sidebar.classList.remove('open');
-          }
-        }
-      });
-    })();
+  function openTab(url, title, closeable = true) {
+    // 이미 열린 탭이면 활성화
+    const existing = tabs.find(t => t.url === url);
+    if (existing) { activateTab(existing.id); return; }
+
+    const id = 'tab-' + Date.now();
+    tabs.push({ id, url, title, closeable });
+    renderTabs();
+    activateTab(id);
+    updateSidebarByUrl(url);
+  }
+
+  function closeTab(id, e) {
+    e.stopPropagation();
+    const idx = tabs.findIndex(t => t.id === id);
+    tabs.splice(idx, 1);
+    // 닫힌 탭이 활성이었으면 이전 탭 활성화
+    if (activeTabId === id) {
+      const nextTab = tabs[Math.max(0, idx - 1)];
+      if (nextTab) activateTab(nextTab.id);
+    }
+    renderTabs();
+    // iframe 제거
+    const panel = document.getElementById('panel-' + id);
+    if (panel) panel.remove();
+  }
+
+  function activateTab(id) {
+    activeTabId = id;
+    // 모든 패널 숨기기
+    document.querySelectorAll('.mdi-panel').forEach(p => p.classList.remove('active'));
+    const panel = document.getElementById('panel-' + id);
+    if (panel) { panel.classList.add('active'); }
+    else {
+      // 새 iframe 생성
+      const tab = tabs.find(t => t.id === id);
+      if (tab) {
+        const iframe = document.createElement('iframe');
+        iframe.id = 'panel-' + id;
+        iframe.className = 'mdi-panel active';
+        iframe.src = tab.url + (tab.url.includes('?') ? '&' : '?') + 'frame=1';
+        document.getElementById('mdiPanels').appendChild(iframe);
+      }
+    }
+    renderTabs();
+    // 사이드바 업데이트
+    const tab = tabs.find(t => t.id === id);
+    if (tab) updateSidebarByUrl(tab.url);
+  }
+
+  function renderTabs() {
+    const bar = document.getElementById('mdiTabBar');
+    bar.innerHTML = tabs.map(t => `
+      <div class="mdi-tab ${t.id === activeTabId ? 'active' : ''}" onclick="activateTab('${t.id}')">
+        <span class="tab-title">${t.title}</span>
+        ${t.closeable ? `<span class="tab-close" onclick="closeTab('${t.id}', event)">&#215;</span>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function activateSection(section) {
+    document.querySelectorAll('.sidebar-section').forEach(s => s.style.display = 'none');
+    const sec = document.getElementById('sidebar-' + section);
+    if (sec) sec.style.display = 'block';
+    // 헤더 탭 active 표시
+    document.querySelectorAll('.header-nav-item').forEach(n => n.classList.remove('active'));
+    const navItem = document.getElementById('nav-' + section);
+    if (navItem) navItem.classList.add('active');
+  }
+
+  function updateSidebarByUrl(url) {
+    if (url.startsWith('/members') || url.startsWith('/recruit')) {
+      activateSection('member');
+    } else if (url.startsWith('/board') || url.startsWith('/notices')) {
+      activateSection('board');
+    }
+  }
+
+  // 사이드바 토글
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('collapsed');
+    });
+  });
   </script>
 </body>
 </html>

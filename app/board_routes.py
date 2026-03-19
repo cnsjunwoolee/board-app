@@ -17,7 +17,7 @@ PAGE_SIZE = 10
 
 # GET /board/ - 게시글 목록 (페이지네이션)
 @board_router.get("/")
-def list_board(request: Request, page: int = 1, db: Session = Depends(get_db)):
+def list_board(request: Request, page: int = 1, frame: bool = False, db: Session = Depends(get_db)):
     total = db.query(Post).count()
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
     page = max(1, min(page, total_pages))
@@ -36,5 +36,6 @@ def list_board(request: Request, page: int = 1, db: Session = Depends(get_db)):
             "page": page,
             "total_pages": total_pages,
             "total": total,
+            "is_frame": frame,
         },
     )

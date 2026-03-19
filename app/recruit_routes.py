@@ -16,11 +16,11 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 # 1. GET /recruit/banner - 배너 편집 화면
 @recruit_router.get("/banner")
-def banner_editor(request: Request, db: Session = Depends(get_db)):
+def banner_editor(request: Request, frame: bool = False, db: Session = Depends(get_db)):
     banner = db.query(RecruitBanner).first()
     return templates.TemplateResponse(
         "members/banner_editor.html",
-        {"request": request, "banner": banner},
+        {"request": request, "banner": banner, "is_frame": frame},
     )
 
 
@@ -43,9 +43,9 @@ def save_banner(
 
 # 3. GET /recruit/banner/view - 배너 미리보기
 @recruit_router.get("/banner/view")
-def banner_view(request: Request, db: Session = Depends(get_db)):
+def banner_view(request: Request, frame: bool = False, db: Session = Depends(get_db)):
     banner = db.query(RecruitBanner).first()
     return templates.TemplateResponse(
         "recruit/banner_view.html",
-        {"request": request, "banner": banner},
+        {"request": request, "banner": banner, "is_frame": frame},
     )

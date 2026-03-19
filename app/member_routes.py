@@ -24,6 +24,7 @@ def list_members(
     request: Request,
     name: Optional[str] = None,
     grade: Optional[str] = None,
+    frame: bool = False,
     db: Session = Depends(get_db),
 ):
     query = db.query(Member)
@@ -42,16 +43,17 @@ def list_members(
             "members": members,
             "search_name": name or "",
             "search_grade": grade or "",
+            "is_frame": frame,
         },
     )
 
 
 # 2. GET /members/new - 회원 등록 폼
 @member_router.get("/new")
-def new_member_form(request: Request):
+def new_member_form(request: Request, frame: bool = False):
     return templates.TemplateResponse(
         "members/form.html",
-        {"request": request, "member": None},
+        {"request": request, "member": None, "is_frame": frame},
     )
 
 
@@ -98,25 +100,25 @@ async def create_member(
 
 # 4. GET /members/{id} - 회원 상세
 @member_router.get("/{member_id}")
-def get_member(member_id: int, request: Request, db: Session = Depends(get_db)):
+def get_member(member_id: int, request: Request, frame: bool = False, db: Session = Depends(get_db)):
     member = db.query(Member).filter(Member.id == member_id).first()
     if member is None:
         raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
     return templates.TemplateResponse(
         "members/detail.html",
-        {"request": request, "member": member},
+        {"request": request, "member": member, "is_frame": frame},
     )
 
 
 # 5. GET /members/{id}/edit - 회원 수정 폼
 @member_router.get("/{member_id}/edit")
-def edit_member_form(member_id: int, request: Request, db: Session = Depends(get_db)):
+def edit_member_form(member_id: int, request: Request, frame: bool = False, db: Session = Depends(get_db)):
     member = db.query(Member).filter(Member.id == member_id).first()
     if member is None:
         raise HTTPException(status_code=404, detail="회원을 찾을 수 없습니다.")
     return templates.TemplateResponse(
         "members/form.html",
-        {"request": request, "member": member},
+        {"request": request, "member": member, "is_frame": frame},
     )
 
 

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -10,6 +10,7 @@ from app.member_routes import member_router
 from app.recruit_routes import recruit_router
 from app.notice_routes import notice_router
 from app.board_routes import board_router
+from app.home_routes import home_router
 
 DEPLOYED_AT = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -40,6 +41,12 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0 NOT NULL"))
         conn.commit()
 
+@app.get("/")
+def shell(request: Request):
+    return templates.TemplateResponse("base.html", {"request": request})
+
+
+app.include_router(home_router)
 app.include_router(router)
 app.include_router(member_router)
 app.include_router(recruit_router)
