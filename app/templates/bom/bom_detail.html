@@ -1,225 +1,142 @@
 {% extends "layout_frame.html" %}
 
-{% macro render_tree_row(node) %}
-<tr class="bom-row"
-    data-item-id="{{ node.item.id }}"
-    data-level="{{ node.level }}"
-    data-parent="{{ node.item.parent_item_id or '' }}">
-  <td class="text-center text-muted">{{ node.level }}</td>
-  <td style="padding-left: {{ (node.level - 1) * 24 }}px; white-space: nowrap;">
-    {% if node.children %}
-    <span class="tree-toggle text-muted me-1" data-item-id="{{ node.item.id }}" style="cursor:pointer; user-select:none;" title="접기/펼치기">&#9660;</span>
-    {% else %}
-    <span style="width:16px; display:inline-block;"></span>
-    {% endif %}
-    <a href="/bom/list?keyword={{ node.item.child_part.part_number }}{% if is_frame %}&frame=1{% endif %}"
-       class="text-decoration-none fw-semibold" style="font-family:'Courier New',monospace; font-size:0.82rem; color:var(--lg-gray-900);"
-       onclick="event.stopPropagation();">{{ node.item.child_part.part_number }}</a>
-  </td>
-  <td>{{ node.item.child_part.description }}</td>
-  <td class="text-muted" style="font-size:0.8rem;">{{ node.item.child_part.spec or '' }}</td>
-  <td class="text-center fw-semibold">
-    {{ node.item.quantity | int if node.item.quantity == node.item.quantity | int else node.item.quantity }}
-  </td>
-  <td class="text-center text-muted">{{ node.item.unit or 'EA' }}</td>
-  <td>
-    {% if node.item.child_part.category %}
-    <span class="badge" style="background:var(--lg-gray-300);color:var(--lg-gray-700);font-size:0.7rem;">{{ node.item.child_part.category }}</span>
-    {% else %}-{% endif %}
-  </td>
-  <td>
-    {% for sub in node.item.substitutes %}
-    <span class="badge bg-warning text-dark me-1" style="font-size:0.7rem;" title="{{ sub.substitute_part.description }}">{{ sub.substitute_part.part_number }}</span>
-    {% endfor %}
-  </td>
-  <td class="text-muted" style="font-size:0.8rem;">{{ node.item.remark or '' }}</td>
-</tr>
-{% for child in node.children %}
-  {{ render_tree_row(child) }}
-{% endfor %}
-{% endmacro %}
-
 {% block extra_head %}
 <style>
-  /* 탭 */
-  .bom-type-tabs { display:flex; gap:0; border-bottom:2px solid var(--lg-border); }
-  .bom-type-tab {
-    padding: 0.45rem 1.2rem; font-size:0.83rem; font-weight:500;
-    color: var(--lg-gray-500); text-decoration:none; border-bottom:2px solid transparent;
-    margin-bottom:-2px; transition: color 0.12s, border-color 0.12s;
-    cursor: pointer;
-  }
-  .bom-type-tab:hover { color: var(--lg-brand); }
-  .bom-type-tab.active { color: var(--lg-brand); border-bottom-color: var(--lg-brand); font-weight:700; }
-
-  /* 정보 영역 */
-  .bom-info-bar {
-    background: #fff; border-bottom:1px solid var(--lg-border);
-    padding: 0.65rem 1.25rem; display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem;
-  }
-  .bom-info-label { font-size:0.72rem; color:var(--lg-gray-500); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; }
-  .bom-info-val { font-size:0.88rem; color:var(--lg-gray-900); font-weight:500; }
-
-  /* 트리 테이블 */
-  .bom-tree-table { font-size:0.84rem; }
-  .bom-tree-table thead th { background: var(--lg-gray-100); font-size:0.78rem; font-weight:600; color:var(--lg-gray-700); }
-  .bom-tree-table tbody tr:hover { background-color: var(--lg-brand-hover); }
-  .bom-row.collapsed { display:none; }
-
-  /* 상태 배지 */
-  .badge-status-draft   { background:#6c757d; color:#fff; }
-  .badge-status-approved { background:#198754; color:#fff; }
-  .badge-status-obsolete { background:#dc3545; color:#fff; }
-
-  /* 트리 토글 hover */
-  .tree-toggle:hover { color: var(--lg-brand) !important; }
+  .bom-info-bar { background: #fff; padding: 1rem 1.25rem; border-bottom: 1px solid #dee2e6; }
+  .bom-tab { display:inline-block; padding: 0.4rem 1rem; cursor:pointer; border-bottom: 2px solid transparent; color: #666; font-size:0.85rem; text-decoration:none; }
+  .bom-tab.active { border-bottom-color: var(--lg-brand, #A50034); color: var(--lg-brand, #A50034); font-weight:700; }
+  .bom-tab .dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin-left:4px; }
+  .tree-row-sub td { background: #fffde7 !important; }
+  .tree-toggle { cursor:pointer; user-select:none; }
+  .tree-pn { font-family:'Courier New',monospace; font-weight:600; font-size:0.82rem; }
+  .tree-sub-pn { font-family:'Courier New',monospace; font-weight:600; font-size:0.82rem; color:#e65100; }
 </style>
 {% endblock %}
 
 {% block frame_content %}
 
-<!-- 페이지 헤더 -->
-<div class="page-header">
-  <div>
-    <h1 class="page-title">BOM 상세</h1>
-    <div class="page-breadcrumb">BOM 관리 &gt; BOM 조회 &gt; {{ part.part_number }}</div>
-  </div>
-  <a href="/bom/list{% if is_frame %}?frame=1{% endif %}" class="btn btn-outline-secondary btn-sm">&#8592; 목록</a>
-</div>
-
-<!-- 부품 기본 정보 -->
+<!-- 상단 정보 -->
 <div class="bom-info-bar">
-  <div>
-    <div class="bom-info-label">부품번호</div>
-    <div class="bom-info-val" style="font-family:'Courier New',monospace;">{{ part.part_number }}</div>
-  </div>
-  <div style="border-left:1px solid var(--lg-border); padding-left:0.75rem;">
-    <div class="bom-info-label">설명</div>
-    <div class="bom-info-val">{{ part.description }}</div>
-  </div>
-  {% if part.spec %}
-  <div style="border-left:1px solid var(--lg-border); padding-left:0.75rem;">
-    <div class="bom-info-label">Spec</div>
-    <div class="bom-info-val" style="font-size:0.83rem;">{{ part.spec }}</div>
-  </div>
-  {% endif %}
-  {% if part.category %}
-  <div style="border-left:1px solid var(--lg-border); padding-left:0.75rem;">
-    <div class="bom-info-label">분류</div>
-    <div class="bom-info-val">
-      <span class="badge" style="background:var(--lg-gray-300);color:var(--lg-gray-700);">{{ part.category }}</span>
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h2 class="h5 mb-1" style="font-weight:700;">{{ part.part_number }}</h2>
+      <div class="text-muted" style="font-size:0.85rem;">{{ part.description }} | {{ part.category or '-' }}</div>
     </div>
-  </div>
-  {% endif %}
-  {% if bom_header %}
-  <div style="border-left:1px solid var(--lg-border); padding-left:0.75rem;">
-    <div class="bom-info-label">BOM 상태</div>
-    <div class="bom-info-val">
-      {% if bom_header.status == '승인' %}
-      <span class="badge badge-status-approved" style="font-size:0.75rem;">{{ bom_header.status }}</span>
-      {% elif bom_header.status == '폐기' %}
-      <span class="badge badge-status-obsolete" style="font-size:0.75rem;">{{ bom_header.status }}</span>
-      {% else %}
-      <span class="badge badge-status-draft" style="font-size:0.75rem;">{{ bom_header.status }}</span>
+    <div class="d-flex gap-2 align-items-center">
+      {% if bom_header %}
+      <span class="badge {% if bom_header.status == '승인' %}bg-success{% elif bom_header.status == '폐기' %}bg-secondary{% else %}bg-warning text-dark{% endif %}" style="font-size:0.78rem;">
+        {{ bom_header.status }}
+      </span>
+      <span class="badge bg-dark" style="font-size:0.78rem;">v{{ bom_header.version }}</span>
+      {% if bom_header.effective_date %}
+      <span class="text-muted" style="font-size:0.78rem;">적용일: {{ bom_header.effective_date }}</span>
       {% endif %}
+      {% endif %}
+      <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}{% if bom_header %}&version={{ bom_header.version }}{% endif %}" class="btn btn-primary btn-sm">편집</a>
+      <a href="/bom/list" class="btn btn-outline-secondary btn-sm">목록</a>
     </div>
   </div>
-  {% if bom_header.effective_date %}
-  <div style="border-left:1px solid var(--lg-border); padding-left:0.75rem;">
-    <div class="bom-info-label">적용일</div>
-    <div class="bom-info-val">{{ bom_header.effective_date }}</div>
-  </div>
-  {% endif %}
-  <div class="ms-auto">
-    <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}&version={{ bom_header.version }}{% if is_frame %}&frame=1{% endif %}"
-       class="btn btn-outline-primary btn-sm">편집</a>
-  </div>
-  {% endif %}
-</div>
 
-<!-- BOM 타입 탭 -->
-<div style="background:#fff; border-bottom:1px solid var(--lg-border); padding: 0 1.25rem 0;">
-  <div class="bom-type-tabs">
-    {% for t in ['E-BOM', 'M-BOM', 'S-BOM'] %}
-    <a href="/bom/detail/{{ part.id }}?bom_type={{ t }}{% if is_frame %}&frame=1{% endif %}"
-       class="bom-type-tab {% if bom_type == t %}active{% endif %}">
-      {{ t }}
-      {% if t in existing_bom_types %}
-      <span style="width:6px;height:6px;border-radius:50%;background:var(--lg-brand);display:inline-block;margin-left:4px;vertical-align:middle;"></span>
-      {% endif %}
+  <!-- BOM 타입 탭 -->
+  <div class="mt-2 border-bottom">
+    {% for bt in ['E-BOM', 'M-BOM', 'S-BOM'] %}
+    <a href="/bom/detail/{{ part.id }}?bom_type={{ bt }}"
+       class="bom-tab {% if bom_type == bt %}active{% endif %}">
+      {{ bt }}
+      {% if bt in existing_bom_types %}<span class="dot" style="background:{% if bt == 'E-BOM' %}#0d6efd{% elif bt == 'M-BOM' %}#198754{% else %}#fd7e14{% endif %};"></span>{% endif %}
     </a>
     {% endfor %}
   </div>
-</div>
 
-<!-- 버전 및 날짜 필터 -->
-<div style="background:var(--lg-gray-100); border-bottom:1px solid var(--lg-border); padding:0.5rem 1.25rem;">
-  <form method="get" action="/bom/detail/{{ part.id }}" class="d-flex align-items-center gap-2 flex-wrap">
-    <input type="hidden" name="bom_type" value="{{ bom_type }}">
-
-    <!-- 버전 드롭다운 -->
-    <div class="d-flex align-items-center gap-1">
-      <label class="text-muted" style="font-size:0.78rem; white-space:nowrap;">버전</label>
-      <select name="version" class="form-select form-select-sm" style="width:auto; min-width:90px;">
-        {% if all_versions %}
-          {% for v in all_versions %}
-          <option value="{{ v.version }}" {% if selected_version == v.version %}selected{% endif %}>
-            v{{ v.version }}{% if loop.first %} (최신){% endif %}
-          </option>
-          {% endfor %}
-        {% else %}
-          <option value="">-</option>
-        {% endif %}
-      </select>
-    </div>
-
-    <!-- 적용일 입력 -->
-    <div class="d-flex align-items-center gap-1">
-      <label class="text-muted" style="font-size:0.78rem; white-space:nowrap;">적용일 기준</label>
-      <input type="date" name="effective_date" value="{{ effective_date }}"
-             class="form-control form-control-sm" style="width:auto;">
-    </div>
-
-    <button type="submit" class="btn btn-primary btn-sm px-3">조회</button>
+  <!-- 버전/적용일 -->
+  <div class="d-flex gap-2 align-items-center mt-2 flex-wrap" style="font-size:0.82rem;">
+    <label>버전:</label>
+    <select id="versionSelect" class="form-select form-select-sm" style="width:auto;" onchange="changeVersion(this.value)">
+      {% for v in all_versions %}
+      <option value="{{ v.version }}" {% if selected_version == v.version %}selected{% endif %}>v{{ v.version }}{% if loop.index == 1 %} (최신){% endif %}</option>
+      {% endfor %}
+    </select>
+    <label class="ms-2">적용일:</label>
+    <input type="date" id="effectiveDateInput" class="form-control form-control-sm" style="width:auto;" value="{{ effective_date }}">
+    <button class="btn btn-outline-primary btn-sm" onclick="queryByDate()">조회</button>
     {% if effective_date %}
-    <a href="/bom/detail/{{ part.id }}?bom_type={{ bom_type }}{% if is_frame %}&frame=1{% endif %}" class="btn btn-outline-secondary btn-sm">초기화</a>
+    <a href="/bom/detail/{{ part.id }}?bom_type={{ bom_type }}" class="btn btn-outline-secondary btn-sm">초기화</a>
     {% endif %}
-  </form>
+  </div>
 </div>
 
-<!-- BOM Tree 영역 -->
+<!-- Tree Table -->
 <div class="page-body">
   {% if bom_header and tree %}
-  <div class="d-flex align-items-center justify-content-between mb-2">
-    <div style="font-size:0.78rem; color:var(--lg-gray-500);">
-      <strong style="color:var(--lg-brand);">{{ bom_type }}</strong>
-      &nbsp;v{{ bom_header.version }}
-      {% if bom_header.effective_date %}
-      &nbsp;&middot;&nbsp;적용일: {{ bom_header.effective_date }}
-      {% endif %}
-    </div>
-    <div class="d-flex gap-2">
-      <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="btnExpandAll" style="font-size:0.75rem;">모두 펼치기</button>
-      <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" id="btnCollapseAll" style="font-size:0.75rem;">모두 접기</button>
-    </div>
+  <div class="d-flex justify-content-end mb-2 gap-2">
+    <button class="btn btn-outline-secondary btn-sm" onclick="toggleAll(true)">모두 펼치기</button>
+    <button class="btn btn-outline-secondary btn-sm" onclick="toggleAll(false)">모두 접기</button>
   </div>
 
   <div class="table-responsive">
-    <table class="table table-bordered table-hover bom-tree-table">
+    <table class="table table-bordered table-hover" style="font-size:0.82rem;">
       <thead class="table-light">
         <tr>
-          <th style="width:40px;" class="text-center">Lv</th>
-          <th style="min-width:160px;">부품번호</th>
-          <th style="min-width:180px;">설명</th>
-          <th style="min-width:140px;">Spec</th>
-          <th style="width:65px;" class="text-center">수량</th>
-          <th style="width:55px;" class="text-center">단위</th>
-          <th style="width:90px;" class="text-center">분류</th>
-          <th style="min-width:110px;">대치품</th>
-          <th style="min-width:120px;">비고</th>
+          <th style="width:35px" class="text-center">Lv</th>
+          <th style="min-width:140px">부품번호</th>
+          <th>설명</th>
+          <th>Spec</th>
+          <th style="width:55px" class="text-center">버전</th>
+          <th style="width:55px" class="text-center">수량</th>
+          <th style="width:45px" class="text-center">단위</th>
+          <th style="width:90px" class="text-center">적용시작일</th>
+          <th style="width:90px" class="text-center">적용종료일</th>
+          <th>분류</th>
+          <th>비고</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="bomTreeBody">
+        <!-- Jinja2 매크로로 트리 렌더링 -->
+        {% macro render_tree_row(node) %}
+        <tr data-item-id="{{ node.item.id }}" data-level="{{ node.level }}" data-parent="{{ node.item.parent_item_id or '' }}" class="tree-data-row">
+          <td class="text-center text-muted">{{ node.level }}</td>
+          <td style="padding-left: {{ (node.level - 1) * 24 }}px; white-space:nowrap;">
+            {% if node.children %}
+            <span class="tree-toggle" onclick="toggleNode({{ node.item.id }})">▼</span>
+            {% else %}
+            <span style="width:16px;display:inline-block;"></span>
+            {% endif %}
+            <span class="tree-pn">{{ node.item.child_part.part_number }}</span>
+          </td>
+          <td>{{ node.item.child_part.description }}</td>
+          <td>{{ node.item.child_part.spec or '' }}</td>
+          <td class="text-center"><small>{{ bom_header.version }}</small></td>
+          <td class="text-center">{{ node.item.quantity }}</td>
+          <td class="text-center">{{ node.item.unit }}</td>
+          <td class="text-center">{{ node.item.effective_start or '-' }}</td>
+          <td class="text-center">{{ node.item.effective_end or '9999-12-31' }}</td>
+          <td>{{ node.item.child_part.category or '-' }}</td>
+          <td>{{ node.item.remark or '' }}</td>
+        </tr>
+        {# 대치품 행 - 본자재 바로 밑에 #}
+        {% for sub in node.item.substitutes %}
+        <tr data-item-id="{{ node.item.id }}-sub-{{ sub.id }}" data-level="{{ node.level }}" data-parent="{{ node.item.parent_item_id or '' }}" data-sub-of="{{ node.item.id }}" class="tree-row-sub tree-data-row">
+          <td class="text-center text-muted"></td>
+          <td style="padding-left: {{ (node.level - 1) * 24 + 16 }}px; white-space:nowrap;">
+            <span style="width:16px;display:inline-block;"></span>
+            <span class="tree-sub-pn">*{{ sub.substitute_part.part_number }}</span>
+          </td>
+          <td>{{ sub.substitute_part.description }}</td>
+          <td>{{ sub.substitute_part.spec or '' }}</td>
+          <td></td>
+          <td class="text-center">{{ node.item.quantity }}</td>
+          <td class="text-center">{{ node.item.unit }}</td>
+          <td></td>
+          <td></td>
+          <td>{{ sub.substitute_part.category or '-' }}</td>
+          <td><small class="text-muted">대치품 (우선순위: {{ sub.priority }})</small></td>
+        </tr>
+        {% endfor %}
+        {% for child in node.children %}
+          {{ render_tree_row(child) }}
+        {% endfor %}
+        {% endmacro %}
+
         {% for node in tree %}
           {{ render_tree_row(node) }}
         {% endfor %}
@@ -227,119 +144,74 @@
     </table>
   </div>
 
-  {% elif bom_header and not tree %}
-  <!-- BOM은 있지만 아이템이 없는 경우 -->
-  <div class="text-center py-5">
-    <div class="text-muted mb-3" style="font-size:0.92rem;">등록된 BOM 아이템이 없습니다.</div>
-    <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}&version={{ bom_header.version }}{% if is_frame %}&frame=1{% endif %}"
-       class="btn btn-primary btn-sm">BOM 편집</a>
+  {% elif bom_header %}
+  <div class="text-center py-5 text-muted">
+    <p>등록된 BOM 구성이 없습니다.</p>
+    <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}" class="btn btn-primary btn-sm">BOM 편집하기</a>
   </div>
-
   {% else %}
-  <!-- BOM 자체가 없는 경우 -->
-  <div class="text-center py-5">
-    <div class="mb-2" style="font-size:2rem; color:var(--lg-gray-300);">&#9741;</div>
-    <div class="text-muted mb-3" style="font-size:0.92rem;">
-      <strong>{{ bom_type }}</strong> BOM이 등록되어 있지 않습니다.<br>
-      BOM을 생성하시겠습니까?
-    </div>
-    <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}{% if is_frame %}&frame=1{% endif %}"
-       class="btn btn-primary btn-sm">BOM 생성</a>
+  <div class="text-center py-5 text-muted">
+    <p>등록된 BOM이 없습니다. BOM을 생성하시겠습니까?</p>
+    <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}" class="btn btn-primary btn-sm">BOM 생성</a>
   </div>
   {% endif %}
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
 <script>
-(function () {
-  // ── 트리 접기/펼치기 ──────────────────────────────────────────
-  const rows = Array.from(document.querySelectorAll('tr.bom-row'));
+function changeVersion(ver) {
+  const url = new URL(window.location);
+  url.searchParams.set('version', ver);
+  url.searchParams.delete('effective_date');
+  window.location.href = url.toString();
+}
+function queryByDate() {
+  const d = document.getElementById('effectiveDateInput').value;
+  if (!d) return alert('적용일을 선택하세요.');
+  const url = new URL(window.location);
+  url.searchParams.set('effective_date', d);
+  url.searchParams.delete('version');
+  window.location.href = url.toString();
+}
 
-  // 각 행의 level을 정수로 파싱
-  function getLevel(row) {
-    return parseInt(row.dataset.level, 10);
-  }
-  function getParent(row) {
-    return row.dataset.parent || '';
-  }
-  function getItemId(row) {
-    return row.dataset.itemId;
-  }
-
-  // itemId에 해당하는 모든 자손 행 반환 (직접 자식 + 재귀)
-  function getDescendants(parentId) {
-    const result = [];
-    rows.forEach(function (r) {
-      if (String(getParent(r)) === String(parentId)) {
-        result.push(r);
-        getDescendants(getItemId(r)).forEach(function (d) { result.push(d); });
+// Tree 접기/펼치기
+function getDescendantRows(itemId) {
+  const rows = [];
+  document.querySelectorAll('#bomTreeBody tr').forEach(tr => {
+    if (tr.dataset.parent == itemId || tr.dataset.subOf == itemId) {
+      rows.push(tr);
+      const childId = tr.dataset.itemId;
+      if (childId && !childId.includes('-sub-')) {
+        rows.push(...getDescendantRows(childId));
       }
-    });
-    return result;
-  }
-
-  // 토글 상태 저장: itemId → collapsed(true/false)
-  const collapseState = {};
-
-  document.querySelectorAll('.tree-toggle').forEach(function (toggle) {
-    toggle.addEventListener('click', function (e) {
-      e.stopPropagation();
-      const itemId = this.dataset.itemId;
-      const collapsed = !collapseState[itemId];
-      collapseState[itemId] = collapsed;
-
-      const descendants = getDescendants(itemId);
-      descendants.forEach(function (r) {
-        if (collapsed) {
-          r.classList.add('collapsed');
-        } else {
-          // 부모가 접혀 있으면 자신도 숨긴 채로 유지
-          const parentId = getParent(r);
-          if (parentId && collapseState[parentId]) {
-            r.classList.add('collapsed');
-          } else {
-            r.classList.remove('collapsed');
-          }
-        }
-      });
-
-      // 아이콘 토글
-      this.innerHTML = collapsed ? '&#9654;' : '&#9660;';
-    });
+    }
   });
+  return rows;
+}
 
-  // 모두 펼치기
-  const btnExpand = document.getElementById('btnExpandAll');
-  if (btnExpand) {
-    btnExpand.addEventListener('click', function () {
-      Object.keys(collapseState).forEach(function (k) { collapseState[k] = false; });
-      rows.forEach(function (r) { r.classList.remove('collapsed'); });
-      document.querySelectorAll('.tree-toggle').forEach(function (t) { t.innerHTML = '&#9660;'; });
+function toggleNode(itemId) {
+  const mainRow = document.querySelector(`tr[data-item-id="${itemId}"]`);
+  const toggle = mainRow?.querySelector('.tree-toggle');
+  if (!toggle) return;
+  const isOpen = toggle.textContent.trim() === '▼';
+  toggle.textContent = isOpen ? '▶' : '▼';
+  const descendants = getDescendantRows(itemId);
+  descendants.forEach(r => r.style.display = isOpen ? 'none' : '');
+}
+
+function toggleAll(open) {
+  document.querySelectorAll('.tree-toggle').forEach(t => t.textContent = open ? '▼' : '▶');
+  if (open) {
+    document.querySelectorAll('#bomTreeBody tr.tree-data-row').forEach(tr => {
+      tr.style.display = '';
+    });
+  } else {
+    // 접기: level 1이 아니고 sub도 아닌 것 숨김, sub는 본자재가 level 1이면 그냥 표시
+    document.querySelectorAll('#bomTreeBody tr.tree-data-row').forEach(tr => {
+      const lv = parseInt(tr.dataset.level || '0');
+      const isSub = tr.dataset.subOf;
+      if (lv > 1 || isSub) tr.style.display = 'none';
     });
   }
-
-  // 모두 접기
-  const btnCollapse = document.getElementById('btnCollapseAll');
-  if (btnCollapse) {
-    btnCollapse.addEventListener('click', function () {
-      // level 1 행의 자식만 접기 (level 1은 유지)
-      rows.forEach(function (r) {
-        if (getLevel(r) > 1) {
-          r.classList.add('collapsed');
-        }
-      });
-      // level 1 행의 토글 아이콘을 ▶로 변경
-      document.querySelectorAll('.tree-toggle').forEach(function (t) {
-        const row = t.closest('tr.bom-row');
-        if (row && getLevel(row) === 1) {
-          collapseState[getItemId(row)] = true;
-          t.innerHTML = '&#9654;';
-        }
-      });
-    });
-  }
-})();
+}
 </script>
 {% endblock %}

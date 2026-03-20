@@ -116,9 +116,10 @@ class BOMHeader(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     part_id = Column(Integer, ForeignKey("parts.id"), nullable=False)
     bom_type = Column(String(10), nullable=False)   # 'E-BOM', 'M-BOM', 'S-BOM'
-    version = Column(Integer, default=1)
+    version = Column(String(10), default="1.0")    # Major.Iteration (1.0, 1.1, 2.0...)
     effective_date = Column(String(10))             # 'YYYY-MM-DD'
-    status = Column(String(20), default="작성중")   # '작성중', '승인', '폐기'
+    status = Column(String(20), default="작성중")   # '작성중', '체크아웃', '승인', '폐기'
+    checked_out = Column(Integer, default=0)        # 0=체크인, 1=체크아웃
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -136,6 +137,8 @@ class BOMItem(Base):
     quantity = Column(Float, default=1.0)
     unit = Column(String(20), default="EA")
     seq_no = Column(Integer, default=0)     # 정렬 순서
+    effective_start = Column(String(10))    # 적용시작일 'YYYY-MM-DD'
+    effective_end = Column(String(10), default="9999-12-31")  # 적용종료일
     remark = Column(String(200))
     created_at = Column(DateTime, default=datetime.now)
 

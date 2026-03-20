@@ -156,7 +156,7 @@ def bom_detail(
     part_id: int,
     request: Request,
     bom_type: str = Query("E-BOM"),
-    version: Optional[int] = Query(None),
+    version: Optional[str] = Query(None),
     effective_date: Optional[str] = Query(None),
     frame: bool = Query(False),
     db: Session = Depends(get_db),
@@ -166,12 +166,18 @@ def bom_detail(
         raise HTTPException(status_code=404, detail="부품을 찾을 수 없습니다.")
 
     # 해당 part + bom_type의 모든 버전
-    all_versions = (
+    all_versions_raw = (
         db.query(BOMHeader)
         .filter(BOMHeader.part_id == part_id, BOMHeader.bom_type == bom_type)
-        .order_by(BOMHeader.version.desc())
         .all()
     )
+    # version을 float으로 변환하여 내림차순 정렬
+    def version_sort_key(h):
+        try:
+            return float(h.version)
+        except (ValueError, TypeError):
+            return 0.0
+    all_versions = sorted(all_versions_raw, key=version_sort_key, reverse=True)
 
     bom_header = None
 
@@ -187,7 +193,7 @@ def bom_detail(
             else:
                 bom_header = all_versions[0]  # fallback: 최신 버전
         elif version is not None:
-            bom_header = next((h for h in all_versions if h.version == version), None)
+            bom_header = next((h for h in all_versions if str(h.version) == str(version)), None)
             if not bom_header:
                 bom_header = all_versions[0]
         else:
@@ -251,6 +257,8 @@ def node_to_flat(node, flat_list, parent_idx):
         "unit": item.unit or "EA",
         "quantity": item.quantity,
         "seq_no": item.seq_no,
+        "effective_start": item.effective_start or "",
+        "effective_end": item.effective_end or "9999-12-31",
         "remark": item.remark or "",
         "level": node["level"],
         "parent_idx": parent_idx,
@@ -277,7 +285,7 @@ def bom_edit(
     part_id: int,
     request: Request,
     bom_type: str = Query("E-BOM"),
-    version: Optional[int] = Query(None),
+    version: Optional[str] = Query(None),
     frame: bool = Query(False),
     db: Session = Depends(get_db),
 ):
@@ -291,16 +299,23 @@ def bom_edit(
         BOMHeader.bom_type == bom_type,
     )
     if version is not None:
-        bom_header = q.filter(BOMHeader.version == version).first()
+        bom_header = q.filter(BOMHeader.version == str(version)).first()
     else:
-        bom_header = q.order_by(BOMHeader.version.desc()).first()
+        # version을 float으로 변환하여 최신 버전 선택
+        all_boms = q.all()
+        def _edit_ver_key(h):
+            try:
+                return float(h.version)
+            except (ValueError, TypeError):
+                return 0.0
+        bom_header = max(all_boms, key=_edit_ver_key) if all_boms else None
 
     # BOM이 없으면 새로 생성
     if not bom_header:
         bom_header = BOMHeader(
             part_id=part_id,
             bom_type=bom_type,
-            version=1,
+            version="1.0",
             status="작성중",
         )
         db.add(bom_header)
@@ -335,7 +350,7 @@ async def bom_save(part_id: int, request: Request, db: Session = Depends(get_db)
     body = await request.json()
 
     bom_type = body.get("bom_type", "E-BOM")
-    version = body.get("version", 1)
+    version = str(body.get("version", "1.0"))
     effective_date = body.get("effective_date") or None
     status = body.get("status", "작성중")
     items_data = body.get("items", [])
@@ -390,6 +405,8 @@ async def bom_save(part_id: int, request: Request, db: Session = Depends(get_db)
             quantity=float(item_data.get("quantity", 1)),
             unit=item_data.get("unit", "EA") or "EA",
             seq_no=int(item_data.get("seq_no", idx)),
+            effective_start=item_data.get("effective_start") or None,
+            effective_end=item_data.get("effective_end") or "9999-12-31",
             remark=item_data.get("remark", "") or "",
         )
         db.add(new_item)
@@ -568,7 +585,7 @@ def api_part_info(part_number: str, db: Session = Depends(get_db)):
 async def bom_new_version(part_id: int, request: Request, db: Session = Depends(get_db)):
     body = await request.json()
     bom_type = body.get("bom_type", "E-BOM")
-    current_version = body.get("version", 1)
+    current_version = str(body.get("version", "1.0"))
 
     part = db.query(Part).filter(Part.id == part_id).first()
     if not part:
@@ -583,12 +600,21 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
     if not source_bom:
         return JSONResponse(status_code=404, content={"error": "원본 BOM을 찾을 수 없습니다."})
 
-    # 최신 버전 번호 조회
-    latest = db.query(BOMHeader).filter(
+    # 최신 버전 번호 조회 (Iteration 증가)
+    all_boms = db.query(BOMHeader).filter(
         BOMHeader.part_id == part_id,
         BOMHeader.bom_type == bom_type,
-    ).order_by(BOMHeader.version.desc()).first()
-    new_version_no = (latest.version + 1) if latest else 1
+    ).all()
+    def _ver_f(h):
+        try:
+            return float(h.version)
+        except (ValueError, TypeError):
+            return 0.0
+    latest = max(all_boms, key=_ver_f) if all_boms else source_bom
+    parts_v = source_bom.version.split(".")
+    major = parts_v[0]
+    iteration = int(parts_v[1]) + 1 if len(parts_v) > 1 else 1
+    new_version_no = f"{major}.{iteration}"
 
     # 새 BOMHeader 생성
     new_bom = BOMHeader(
@@ -620,6 +646,8 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
             quantity=old_item.quantity,
             unit=old_item.unit,
             seq_no=old_item.seq_no,
+            effective_start=old_item.effective_start,
+            effective_end=old_item.effective_end,
             remark=old_item.remark,
         )
         db.add(new_item)
@@ -645,3 +673,142 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
 
     db.commit()
     return JSONResponse(content={"ok": True, "version": new_version_no})
+
+
+@bom_router.post("/edit/{part_id}/checkout")
+async def bom_checkout(part_id: int, request: Request, db: Session = Depends(get_db)):
+    body = await request.json()
+    bom_type = body.get("bom_type", "E-BOM")
+    version = str(body.get("version", "1.0"))
+
+    bom = db.query(BOMHeader).filter(
+        BOMHeader.part_id == part_id,
+        BOMHeader.bom_type == bom_type,
+        BOMHeader.version == version,
+    ).first()
+    if not bom:
+        return JSONResponse(status_code=404, content={"error": "BOM을 찾을 수 없습니다."})
+    if bom.checked_out:
+        return JSONResponse(status_code=400, content={"error": "이미 체크아웃 상태입니다."})
+
+    bom.checked_out = 1
+    bom.status = "체크아웃"
+    db.commit()
+    return JSONResponse(content={"ok": True, "version": bom.version})
+
+
+@bom_router.post("/edit/{part_id}/checkin")
+async def bom_checkin(part_id: int, request: Request, db: Session = Depends(get_db)):
+    body = await request.json()
+    bom_type = body.get("bom_type", "E-BOM")
+    version = str(body.get("version", "1.0"))
+
+    bom = db.query(BOMHeader).filter(
+        BOMHeader.part_id == part_id,
+        BOMHeader.bom_type == bom_type,
+        BOMHeader.version == version,
+    ).first()
+    if not bom:
+        return JSONResponse(status_code=404, content={"error": "BOM을 찾을 수 없습니다."})
+    if not bom.checked_out:
+        return JSONResponse(status_code=400, content={"error": "체크아웃 상태가 아닙니다."})
+
+    # Iteration 증가: 1.0 → 1.1, 1.3 → 1.4
+    parts = bom.version.split(".")
+    major = parts[0]
+    iteration = int(parts[1]) + 1 if len(parts) > 1 else 1
+    new_version = f"{major}.{iteration}"
+
+    # 새 BOM 헤더 생성 (iteration up)
+    new_bom = BOMHeader(
+        part_id=part_id,
+        bom_type=bom_type,
+        version=new_version,
+        effective_date=bom.effective_date,
+        status="작성중",
+        checked_out=0,
+    )
+    db.add(new_bom)
+    db.flush()
+
+    # 기존 아이템 복사
+    source_items = db.query(BOMItem).filter(BOMItem.bom_id == bom.id)\
+        .options(joinedload(BOMItem.substitutes)).order_by(BOMItem.seq_no).all()
+
+    def _copy_items_checkin(old_item, new_parent_id):
+        new_item = BOMItem(
+            bom_id=new_bom.id, parent_item_id=new_parent_id,
+            child_part_id=old_item.child_part_id, quantity=old_item.quantity,
+            unit=old_item.unit, seq_no=old_item.seq_no,
+            effective_start=old_item.effective_start, effective_end=old_item.effective_end,
+            remark=old_item.remark,
+        )
+        db.add(new_item)
+        db.flush()
+        for sub in old_item.substitutes:
+            db.add(BOMSubstitute(bom_item_id=new_item.id, substitute_part_id=sub.substitute_part_id, priority=sub.priority, remark=sub.remark))
+        for child in sorted([i for i in source_items if i.parent_item_id == old_item.id], key=lambda x: x.seq_no):
+            _copy_items_checkin(child, new_item.id)
+
+    for root in sorted([i for i in source_items if i.parent_item_id is None], key=lambda x: x.seq_no):
+        _copy_items_checkin(root, None)
+
+    # 원본 BOM 상태 변경
+    bom.checked_out = 0
+    bom.status = "작성중"
+
+    db.commit()
+    return JSONResponse(content={"ok": True, "version": new_version})
+
+
+@bom_router.post("/edit/{part_id}/revise")
+async def bom_revise(part_id: int, request: Request, db: Session = Depends(get_db)):
+    """결재 완료 후 Revise — Major 버전 증가 (1.x → 2.0)"""
+    body = await request.json()
+    bom_type = body.get("bom_type", "E-BOM")
+    version = str(body.get("version", "1.0"))
+
+    bom = db.query(BOMHeader).filter(
+        BOMHeader.part_id == part_id,
+        BOMHeader.bom_type == bom_type,
+        BOMHeader.version == version,
+    ).first()
+    if not bom:
+        return JSONResponse(status_code=404, content={"error": "BOM을 찾을 수 없습니다."})
+    if bom.status != "승인":
+        return JSONResponse(status_code=400, content={"error": "승인 상태에서만 Revise 가능합니다."})
+
+    # Major 증가: 1.3 → 2.0
+    major = int(bom.version.split(".")[0]) + 1
+    new_version = f"{major}.0"
+
+    new_bom = BOMHeader(
+        part_id=part_id, bom_type=bom_type, version=new_version,
+        effective_date=bom.effective_date, status="작성중", checked_out=0,
+    )
+    db.add(new_bom)
+    db.flush()
+
+    source_items = db.query(BOMItem).filter(BOMItem.bom_id == bom.id)\
+        .options(joinedload(BOMItem.substitutes)).order_by(BOMItem.seq_no).all()
+
+    def _copy_items_revise(old_item, new_parent_id):
+        new_item = BOMItem(
+            bom_id=new_bom.id, parent_item_id=new_parent_id,
+            child_part_id=old_item.child_part_id, quantity=old_item.quantity,
+            unit=old_item.unit, seq_no=old_item.seq_no,
+            effective_start=old_item.effective_start, effective_end=old_item.effective_end,
+            remark=old_item.remark,
+        )
+        db.add(new_item)
+        db.flush()
+        for sub in old_item.substitutes:
+            db.add(BOMSubstitute(bom_item_id=new_item.id, substitute_part_id=sub.substitute_part_id, priority=sub.priority, remark=sub.remark))
+        for child in sorted([i for i in source_items if i.parent_item_id == old_item.id], key=lambda x: x.seq_no):
+            _copy_items_revise(child, new_item.id)
+
+    for root in sorted([i for i in source_items if i.parent_item_id is None], key=lambda x: x.seq_no):
+        _copy_items_revise(root, None)
+
+    db.commit()
+    return JSONResponse(content={"ok": True, "version": new_version})

@@ -47,6 +47,30 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0 NOT NULL"))
         conn.commit()
 
+# BOM 테이블 새 컬럼 마이그레이션
+with engine.connect() as conn:
+    db_url = str(engine.url)
+    try:
+        if db_url.startswith("sqlite"):
+            # bom_items: effective_start, effective_end
+            cols = [r[1] for r in conn.execute(text("PRAGMA table_info(bom_items)")).fetchall()]
+            if "effective_start" not in cols:
+                conn.execute(text("ALTER TABLE bom_items ADD COLUMN effective_start VARCHAR(10)"))
+                conn.execute(text("ALTER TABLE bom_items ADD COLUMN effective_end VARCHAR(10) DEFAULT '9999-12-31'"))
+                conn.commit()
+            # bom_headers: checked_out, version type change
+            cols_h = [r[1] for r in conn.execute(text("PRAGMA table_info(bom_headers)")).fetchall()]
+            if "checked_out" not in cols_h:
+                conn.execute(text("ALTER TABLE bom_headers ADD COLUMN checked_out INTEGER DEFAULT 0"))
+                conn.commit()
+        else:
+            conn.execute(text("ALTER TABLE bom_items ADD COLUMN IF NOT EXISTS effective_start VARCHAR(10)"))
+            conn.execute(text("ALTER TABLE bom_items ADD COLUMN IF NOT EXISTS effective_end VARCHAR(10) DEFAULT '9999-12-31'"))
+            conn.execute(text("ALTER TABLE bom_headers ADD COLUMN IF NOT EXISTS checked_out INTEGER DEFAULT 0"))
+            conn.commit()
+    except Exception:
+        pass
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """모든 요청에 current_operator를 request.state에 주입."""
