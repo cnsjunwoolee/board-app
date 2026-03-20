@@ -1,0 +1,23 @@
+{% extends "layout_frame.html" if is_frame else "base.html" %}
+
+{% block sidebar %}
+<div class="sidebar-section-title">BOM</div>
+<nav class="sidebar-nav">
+  <a href="/bom/parts" class="sidebar-item {% if '/parts' in request.url.path %}active{% endif %}">
+    <span>부품조회</span>
+  </a>
+  <a href="/bom/list" class="sidebar-item {% if '/bom/list' in request.url.path or '/bom/detail' in request.url.path or '/bom/edit' in request.url.path %}active{% endif %}">
+    <span>BOM 조회</span>
+  </a>
+</nav>
+{% endblock %}
+
+{% block content %}{% block frame_content %}
+<div class="page-header">
+  <h1 class="page-title">&#9881; {% block page_title_heading %}{% endblock %}</h1>
+  <div class="page-breadcrumb">Home &gt; BOM &gt; {% block page_breadcrumb %}{% endblock %}</div>
+</div>
+<div class="page-body">
+  {% block bom_content %}{% endblock %}
+</div>
+{% endblock %}{% endblock %}

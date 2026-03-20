@@ -10,6 +10,16 @@
 
 진행률: 4/4 (100%)
 
+## BOM 관리 시스템 (2026-03-20)
+모드: 자동진행
+- [ ] 1. BOM 모델 정의 + DB 마이그레이션 + 메뉴 권한 (impl-sonnet)
+- [ ] 2. 부품 CRUD 라우트 + 템플릿 (impl-sonnet) [blockedBy: 1]
+- [ ] 3. BOM 조회/상세 라우트 + Tree Table (impl-sonnet) [blockedBy: 1]
+- [ ] 4. BOM 편집 모드 - Tree Editor + DnD + Excel + 검색 (impl-sonnet) [blockedBy: 3]
+- [ ] 5. 메뉴/사이드바 통합 + main.py 라우터 등록 (impl-sonnet) [blockedBy: 1]
+- [ ] 6. 시드 데이터 생성 - 2000부품 + 4~5 Level BOM (impl-sonnet) [blockedBy: 1, 3]
+진행률: 0/6 (0%)
+
 ## 기술 스택
 - FastAPI (Python 웹 프레임워크)
 - SQLite + SQLAlchemy (데이터베이스)

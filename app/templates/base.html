@@ -21,6 +21,7 @@
     <nav class="header-nav">
       <a href="#" class="header-nav-item" id="nav-member" onclick="activateSection('member');return false;">회원모집</a>
       <a href="#" class="header-nav-item" id="nav-board" onclick="activateSection('board');return false;">게시판</a>
+      <a href="#" class="header-nav-item" id="nav-bom" onclick="activateSection('bom');return false;">BOM</a>
       <a href="#" class="header-nav-item" id="nav-admin" onclick="activateSection('admin');return false;">관리</a>
     </nav>
     <div class="header-right">
@@ -57,6 +58,15 @@
         <nav class="sidebar-nav">
           <a href="#" class="sidebar-item" onclick="openTab('/board/','게시판');return false;">게시판</a>
           <a href="#" class="sidebar-item" onclick="openTab('/notices/','공지사항');return false;">공지사항</a>
+        </nav>
+      </div>
+
+      <!-- BOM 섹션 사이드바 -->
+      <div id="sidebar-bom" class="sidebar-section" style="display:none">
+        <div class="sidebar-section-title">BOM</div>
+        <nav class="sidebar-nav">
+          <a href="#" class="sidebar-item" onclick="openTab('/bom/parts','부품조회');return false;">부품조회</a>
+          <a href="#" class="sidebar-item" onclick="openTab('/bom/list','BOM 조회');return false;">BOM 조회</a>
         </nav>
       </div>
 
@@ -179,6 +189,8 @@
       activateSection('member');
     } else if (url.startsWith('/board') || url.startsWith('/notices') || url.startsWith('/posts')) {
       activateSection('board');
+    } else if (url.startsWith('/bom')) {
+      activateSection('bom');
     } else if (url.startsWith('/admin')) {
       activateSection('admin');
     }

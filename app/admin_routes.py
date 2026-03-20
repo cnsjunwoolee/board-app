@@ -8,7 +8,7 @@ import random
 from datetime import datetime, timedelta
 
 from app.database import get_db
-from app.models import Operator, OperatorPermission, Member
+from app.models import Operator, OperatorPermission, Member, Part, BOMHeader, BOMItem, BOMSubstitute
 from app.auth import get_current_operator, hash_password, MENU_LABELS
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
@@ -195,3 +195,251 @@ def seed_members(request: Request, db: Session = Depends(get_db)):
         db.add(m)
     db.commit()
     return RedirectResponse(url="/members/", status_code=303)
+
+
+@admin_router.post("/seed-bom")
+def seed_bom(request: Request, db: Session = Depends(get_db)):
+    """가상 부품 2000개 + BOM 구조 생성."""
+    op = require_admin(request, db)
+    if not op:
+        return RedirectResponse(url="/auth/login", status_code=303)
+
+    # 중복 생성 방지: 이미 Part가 2000개 이상이면 기존 BOM/Part 데이터 삭제 후 재생성
+    existing_count = db.query(Part).count()
+    if existing_count >= 2000:
+        db.query(BOMSubstitute).delete()
+        db.query(BOMItem).delete()
+        db.query(BOMHeader).delete()
+        db.query(Part).delete()
+        db.flush()
+
+    descriptions_model = ['세탁기 모델', '냉장고 모델', '에어컨 모델', '전자레인지 모델', 'TV 모델',
+                          '건조기 모델', '식기세척기 모델', '공기청정기 모델', '로봇청소기 모델', '스타일러 모델']
+    descriptions_semi = ["메인보드 ASS'Y", '디스플레이 모듈', '컴프레서 유닛', '제어보드', '전원보드',
+                         "히터 ASS'Y", "팬 모터 ASS'Y", "도어 ASS'Y", "필터 ASS'Y", '센서모듈']
+    descriptions_mech = ['브라켓', '하우징', '커버', '패널', '프레임', '가스켓', '나사', '볼트', '너트',
+                         '와셔', '스프링', '베어링', '기어', '샤프트', '캠']
+    descriptions_elec = ['저항', '콘덴서', '트랜지스터', 'IC칩', 'LED', '다이오드', '릴레이', '퓨즈',
+                         '커넥터', '케이블', 'PCB', '변압기', '센서', '스위치', '모터']
+    descriptions_misc = ['라벨', '포장재', '매뉴얼', '스티커', '테이프', '접착제', '윤활유', '실리콘', '패킹', '절연체']
+
+    specs_mech = ['SUS304', 'AL6061', 'PP', 'ABS', 'PC', 'PE', 'STEEL', 'ZINC', 'COPPER', 'NYLON']
+    specs_elec = ['1/4W 10K', '0.1uF 50V', '2N2222', 'NE555', '5mm RED', '1N4148', '5V DC', '250V 1A', '2.54mm', 'AWG24']
+
+    units = ['EA', 'EA', 'EA', 'KG', 'M', 'SET', 'L']
+    manufacturers = ['삼성전기', 'LG이노텍', '대한전선', '서울반도체', 'LS전선', '풍산', '포스코', '현대제철', 'SK하이닉스', '일진전기']
+    materials = ['SUS304', 'AL6061', 'ABS', 'PP', 'PC', 'COPPER', 'STEEL', 'RUBBER', 'GLASS', 'CERAMIC']
+
+    # ── 부품 생성 ──────────────────────────────────────────────────────────────
+
+    # 모델 20개: MODELA-0001AA ~ MODELA-0020AA
+    model_parts = []
+    for i in range(1, 21):
+        p = Part(
+            part_number=f'MODELA-{i:04d}AA',
+            description=random.choice(descriptions_model) + f' {i}',
+            spec=f'REV{i:02d}',
+            category='모델',
+            unit='EA',
+            weight=str(round(random.uniform(5.0, 80.0), 1)),
+            material=random.choice(materials),
+            manufacturer=random.choice(manufacturers),
+            lead_time=random.randint(30, 90),
+        )
+        db.add(p)
+        model_parts.append(p)
+    db.flush()
+
+    # 반제품 200개: SEMI00001A ~ SEMI00200A
+    semi_parts = []
+    for i in range(1, 201):
+        p = Part(
+            part_number=f'SEMI{i:05d}A',
+            description=random.choice(descriptions_semi),
+            spec=f'VER{i:03d}',
+            category='반제품',
+            unit='EA',
+            weight=str(round(random.uniform(0.5, 10.0), 2)),
+            material=random.choice(materials),
+            manufacturer=random.choice(manufacturers),
+            lead_time=random.randint(14, 60),
+        )
+        db.add(p)
+        semi_parts.append(p)
+    db.flush()
+
+    # 기구자재 600개: MECH00001A ~ MECH00600A
+    mech_parts = []
+    for i in range(1, 601):
+        p = Part(
+            part_number=f'MECH{i:05d}A',
+            description=random.choice(descriptions_mech),
+            spec=random.choice(specs_mech),
+            category='기구자재',
+            unit=random.choice(units),
+            weight=str(round(random.uniform(0.001, 2.0), 3)),
+            material=random.choice(materials),
+            manufacturer=random.choice(manufacturers),
+            lead_time=random.randint(7, 30),
+        )
+        db.add(p)
+        mech_parts.append(p)
+    db.flush()
+
+    # 회로자재 600개: ELEC00001A ~ ELEC00600A
+    elec_parts = []
+    for i in range(1, 601):
+        p = Part(
+            part_number=f'ELEC{i:05d}A',
+            description=random.choice(descriptions_elec),
+            spec=random.choice(specs_elec),
+            category='회로자재',
+            unit=random.choice(units),
+            weight=str(round(random.uniform(0.0001, 0.5), 4)),
+            material=random.choice(materials),
+            manufacturer=random.choice(manufacturers),
+            lead_time=random.randint(3, 21),
+        )
+        db.add(p)
+        elec_parts.append(p)
+    db.flush()
+
+    # 기타자재 580개: MISC00001A ~ MISC00580A
+    misc_parts = []
+    for i in range(1, 581):
+        p = Part(
+            part_number=f'MISC{i:05d}A',
+            description=random.choice(descriptions_misc),
+            spec='-',
+            category='기타',
+            unit=random.choice(units),
+            weight=str(round(random.uniform(0.001, 1.0), 3)),
+            material=random.choice(materials),
+            manufacturer=random.choice(manufacturers),
+            lead_time=random.randint(1, 14),
+        )
+        db.add(p)
+        misc_parts.append(p)
+    db.flush()
+
+    # ── BOM 생성 헬퍼 ──────────────────────────────────────────────────────────
+
+    def create_bom_for_model(model_part, semi_parts, mech_parts, elec_parts, misc_parts, bom_type='E-BOM'):
+        bom = BOMHeader(
+            part_id=model_part.id,
+            bom_type=bom_type,
+            version=1,
+            effective_date='2026-01-01',
+            status='승인',
+        )
+        db.add(bom)
+        db.flush()
+
+        # Level 2: 반제품 3~5개
+        num_l2 = random.randint(3, 5)
+        used_semi = random.sample(semi_parts, min(num_l2, len(semi_parts)))
+        seq = 0
+
+        for semi in used_semi:
+            seq += 10
+            l2_item = BOMItem(
+                bom_id=bom.id,
+                parent_item_id=None,
+                child_part_id=semi.id,
+                quantity=random.randint(1, 3),
+                unit='EA',
+                seq_no=seq,
+            )
+            db.add(l2_item)
+            db.flush()
+
+            # Level 3: 부품 5~10개
+            num_l3 = random.randint(5, 10)
+            combined = mech_parts + elec_parts
+            l3_parts = random.sample(combined, min(num_l3, len(combined)))
+            l3_seq = 0
+            for p3 in l3_parts:
+                l3_seq += 10
+                l3_item = BOMItem(
+                    bom_id=bom.id,
+                    parent_item_id=l2_item.id,
+                    child_part_id=p3.id,
+                    quantity=random.choice([1, 1, 2, 2, 3, 4, 5, 10]),
+                    unit='EA',
+                    seq_no=l3_seq,
+                )
+                db.add(l3_item)
+                db.flush()
+
+                # Level 4: 2~5개 (50% 확률)
+                if random.random() < 0.5:
+                    num_l4 = random.randint(2, 5)
+                    l4_pool = elec_parts + mech_parts
+                    l4_parts = random.sample(l4_pool, min(num_l4, len(elec_parts)))
+                    l4_seq = 0
+                    for p4 in l4_parts:
+                        l4_seq += 10
+                        l4_item = BOMItem(
+                            bom_id=bom.id,
+                            parent_item_id=l3_item.id,
+                            child_part_id=p4.id,
+                            quantity=random.choice([1, 2, 3, 5, 10, 20]),
+                            unit='EA',
+                            seq_no=l4_seq,
+                        )
+                        db.add(l4_item)
+                        db.flush()
+
+                        # Level 5: 1~3개 (30% 확률)
+                        if random.random() < 0.3:
+                            num_l5 = random.randint(1, 3)
+                            l5_parts = random.sample(misc_parts, min(num_l5, len(misc_parts)))
+                            l5_seq = 0
+                            for p5 in l5_parts:
+                                l5_seq += 10
+                                db.add(BOMItem(
+                                    bom_id=bom.id,
+                                    parent_item_id=l4_item.id,
+                                    child_part_id=p5.id,
+                                    quantity=random.choice([1, 2, 5, 10]),
+                                    unit='EA',
+                                    seq_no=l5_seq,
+                                ))
+
+        db.flush()
+
+        # 대치부품 추가 (Level 3 이하 아이템 중 20%에 대해, 최대 10개)
+        level3_items = db.query(BOMItem).filter(
+            BOMItem.bom_id == bom.id,
+            BOMItem.parent_item_id != None,
+        ).all()
+        sample_size = min(len(level3_items) // 5, 10)
+        if sample_size > 0:
+            for item in random.sample(level3_items, sample_size):
+                sub_part = random.choice(elec_parts + mech_parts)
+                if sub_part.id != item.child_part_id:
+                    db.add(BOMSubstitute(
+                        bom_item_id=item.id,
+                        substitute_part_id=sub_part.id,
+                        priority=1,
+                        remark='대치 가능',
+                    ))
+
+        db.flush()
+
+    # ── 모델별 BOM 생성 ────────────────────────────────────────────────────────
+
+    for idx, model_part in enumerate(model_parts):
+        # 전체 20개: E-BOM
+        create_bom_for_model(model_part, semi_parts, mech_parts, elec_parts, misc_parts, bom_type='E-BOM')
+
+        # 10개는 추가로 M-BOM (index 0~9)
+        if idx < 10:
+            create_bom_for_model(model_part, semi_parts, mech_parts, elec_parts, misc_parts, bom_type='M-BOM')
+
+        # 5개는 추가로 S-BOM (index 0~4)
+        if idx < 5:
+            create_bom_for_model(model_part, semi_parts, mech_parts, elec_parts, misc_parts, bom_type='S-BOM')
+
+    db.commit()
+    return RedirectResponse(url="/bom/parts", status_code=303)

@@ -14,6 +14,8 @@ from app.board_routes import board_router
 from app.home_routes import home_router
 from app.auth_routes import auth_router
 from app.admin_routes import admin_router
+from app.part_routes import part_router
+from app.bom_routes import bom_router
 from app.auth import get_current_operator, hash_password
 
 DEPLOYED_AT = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -91,3 +93,5 @@ app.include_router(member_router)
 app.include_router(recruit_router)
 app.include_router(notice_router)
 app.include_router(board_router)
+app.include_router(part_router)
+app.include_router(bom_router)

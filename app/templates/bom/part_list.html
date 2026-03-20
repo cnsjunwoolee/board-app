@@ -1,0 +1,144 @@
+{% extends "layout_frame.html" %}
+{% block frame_content %}
+
+<div class="container-fluid py-3 px-3">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 mb-0">부품 목록 <span class="text-muted" style="font-size:0.85rem;">(총 {{ total }}건)</span></h2>
+  </div>
+
+  <!-- 검색 폼 -->
+  <form method="get" action="/bom/parts" class="mb-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input
+        type="text"
+        name="keyword"
+        class="form-control form-control-sm"
+        style="width: 200px;"
+        placeholder="부품번호 또는 설명 검색"
+        value="{{ search_keyword }}"
+      />
+      <select name="category" class="form-select form-select-sm" style="width: 140px;">
+        <option value="" {% if not search_category %}selected{% endif %}>전체 분류</option>
+        <option value="모델"     {% if search_category == '모델' %}selected{% endif %}>모델</option>
+        <option value="반제품"   {% if search_category == '반제품' %}selected{% endif %}>반제품</option>
+        <option value="기구자재" {% if search_category == '기구자재' %}selected{% endif %}>기구자재</option>
+        <option value="회로자재" {% if search_category == '회로자재' %}selected{% endif %}>회로자재</option>
+        <option value="기타"     {% if search_category == '기타' %}selected{% endif %}>기타</option>
+      </select>
+      <button type="submit" class="btn btn-outline-primary btn-sm">검색</button>
+      <a href="/bom/parts/new" class="btn btn-primary btn-sm">+ 부품 등록</a>
+    </div>
+  </form>
+
+  <!-- 데스크탑: 테이블 -->
+  <div class="d-none d-md-block table-responsive">
+    <table class="table table-bordered table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 60px;" class="text-center">번호</th>
+          <th style="width: 140px;">부품번호</th>
+          <th>설명</th>
+          <th>Spec</th>
+          <th style="width: 90px;" class="text-center">분류</th>
+          <th style="width: 60px;" class="text-center">단위</th>
+          <th style="width: 120px;">제조사</th>
+          <th style="width: 110px;" class="text-center">등록일</th>
+          <th style="width: 70px;" class="text-center">상세</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if parts %}
+          {% for part in parts %}
+          <tr>
+            <td class="text-center text-muted">{{ (page - 1) * 20 + loop.index }}</td>
+            <td class="font-monospace small">{{ part.part_number }}</td>
+            <td>{{ part.description }}</td>
+            <td class="small text-muted">{{ part.spec }}</td>
+            <td class="text-center">
+              {% if part.category %}
+                <span class="badge"
+                  style="background-color:
+                    {% if part.category == '모델' %}#A50034
+                    {% elif part.category == '반제품' %}#6f42c1
+                    {% elif part.category == '기구자재' %}#0d6efd
+                    {% elif part.category == '회로자재' %}#198754
+                    {% else %}#6c757d
+                    {% endif %};">
+                  {{ part.category }}
+                </span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td class="text-center">{{ part.unit or '-' }}</td>
+            <td class="small">{{ part.manufacturer or '-' }}</td>
+            <td class="text-center text-muted small">{{ part.created_at.strftime('%Y-%m-%d') }}</td>
+            <td class="text-center">
+              <a href="/bom/parts/{{ part.id }}/edit" class="btn btn-outline-secondary btn-sm">상세</a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="9" class="text-center text-muted py-5">등록된 부품이 없습니다.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 모바일: 카드 목록 -->
+  <div class="d-md-none">
+    {% if parts %}
+      {% for part in parts %}
+      <a href="/bom/parts/{{ part.id }}/edit" class="text-decoration-none">
+        <div class="card mb-2 post-card">
+          <div class="card-body py-3 px-3">
+            <div class="post-card-title d-flex align-items-center gap-2">
+              <span class="font-monospace small">{{ part.part_number }}</span>
+              {% if part.category %}
+                <span class="badge"
+                  style="background-color:
+                    {% if part.category == '모델' %}#A50034
+                    {% elif part.category == '반제품' %}#6f42c1
+                    {% elif part.category == '기구자재' %}#0d6efd
+                    {% elif part.category == '회로자재' %}#198754
+                    {% else %}#6c757d
+                    {% endif %}; font-size:0.7rem;">
+                  {{ part.category }}
+                </span>
+              {% endif %}
+            </div>
+            <div class="post-card-meta mt-1">
+              <span>{{ part.description }}</span>
+            </div>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <p class="text-center text-muted py-5">등록된 부품이 없습니다.</p>
+    {% endif %}
+  </div>
+
+  <!-- 페이징 -->
+  {% if total_pages > 1 %}
+  <nav class="mt-3 d-flex justify-content-center">
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/bom/parts?page={{ page - 1 }}&keyword={{ search_keyword }}&category={{ search_category }}">&#8249;</a>
+      </li>
+      {% for p in range(1, total_pages + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="/bom/parts?page={{ p }}&keyword={{ search_keyword }}&category={{ search_category }}">{{ p }}</a>
+      </li>
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/bom/parts?page={{ page + 1 }}&keyword={{ search_keyword }}&category={{ search_category }}">&#8250;</a>
+      </li>
+    </ul>
+  </nav>
+  {% endif %}
+
+</div>
+
+{% endblock %}

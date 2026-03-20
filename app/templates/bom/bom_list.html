@@ -1,0 +1,176 @@
+{% extends "layout_frame.html" %}
+
+{% block extra_head %}
+<style>
+  .bom-badge-e { background-color: #0d6efd; color: #fff; }
+  .bom-badge-m { background-color: #198754; color: #fff; }
+  .bom-badge-s { background-color: #fd7e14; color: #fff; }
+  .search-bar { background: #fff; border-bottom: 1px solid var(--lg-border); padding: 0.65rem 1.25rem; }
+  .tbl-part-num { font-weight: 600; font-size: 0.82rem; color: var(--lg-gray-900); font-family: 'Courier New', monospace; }
+</style>
+{% endblock %}
+
+{% block frame_content %}
+
+<!-- 페이지 헤더 -->
+<div class="page-header">
+  <h1 class="page-title">BOM 조회</h1>
+  <div class="page-breadcrumb">BOM 관리 &gt; BOM 조회</div>
+</div>
+
+<!-- 검색 바 -->
+<div class="search-bar">
+  <form method="get" action="/bom/list" class="d-flex align-items-center gap-2 flex-wrap">
+    <input
+      type="text"
+      name="keyword"
+      value="{{ keyword }}"
+      placeholder="부품번호 또는 설명 검색"
+      class="form-control form-control-sm"
+      style="max-width:260px;"
+    >
+    <select name="category" class="form-select form-select-sm" style="max-width:160px;">
+      <option value="">전체 분류</option>
+      {% for cat in categories %}
+      <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm px-3">검색</button>
+    {% if keyword or category %}
+    <a href="/bom/list{% if is_frame %}?frame=1{% endif %}" class="btn btn-outline-secondary btn-sm">초기화</a>
+    {% endif %}
+    <span class="text-muted small ms-auto">총 {{ total }}건</span>
+  </form>
+</div>
+
+<!-- 데스크탑: 테이블 -->
+<div class="page-body">
+  <div class="d-none d-md-block table-responsive">
+    <table class="table table-bordered table-hover align-middle" style="font-size:0.85rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:50px;" class="text-center">No.</th>
+          <th style="width:150px;">부품번호</th>
+          <th>설명</th>
+          <th style="width:110px;" class="text-center">분류</th>
+          <th style="width:170px;" class="text-center">BOM 상태</th>
+          <th style="width:100px;" class="text-center">등록일</th>
+          <th style="width:70px;" class="text-center">상세</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if parts %}
+          {% for part in parts %}
+          {% set row_num = (page - 1) * page_size + loop.index %}
+          {% set bom_types = bom_type_map.get(part.id, set()) %}
+          <tr style="cursor:pointer;" onclick="location.href='/bom/detail/{{ part.id }}{% if is_frame %}?frame=1{% endif %}'">
+            <td class="text-center text-muted">{{ row_num }}</td>
+            <td><span class="tbl-part-num">{{ part.part_number }}</span></td>
+            <td>
+              {{ part.description }}
+              {% if part.spec %}
+              <small class="text-muted d-block" style="font-size:0.75rem;">{{ part.spec }}</small>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if part.category %}
+              <span class="badge" style="background:var(--lg-gray-300);color:var(--lg-gray-700);font-size:0.72rem;">{{ part.category }}</span>
+              {% else %}
+              <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if bom_types %}
+                {% if 'E-BOM' in bom_types %}
+                <span class="badge bom-badge-e me-1" style="font-size:0.72rem;">E-BOM</span>
+                {% endif %}
+                {% if 'M-BOM' in bom_types %}
+                <span class="badge bom-badge-m me-1" style="font-size:0.72rem;">M-BOM</span>
+                {% endif %}
+                {% if 'S-BOM' in bom_types %}
+                <span class="badge bom-badge-s" style="font-size:0.72rem;">S-BOM</span>
+                {% endif %}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td class="text-center text-muted" style="font-size:0.78rem;">{{ part.created_at.strftime('%Y-%m-%d') }}</td>
+            <td class="text-center" onclick="event.stopPropagation();">
+              <a href="/bom/detail/{{ part.id }}{% if is_frame %}?frame=1{% endif %}" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.75rem;">상세</a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-5">검색 결과가 없습니다.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 모바일: 카드 목록 -->
+  <div class="d-md-none">
+    {% if parts %}
+      {% for part in parts %}
+      {% set bom_types = bom_type_map.get(part.id, set()) %}
+      <a href="/bom/detail/{{ part.id }}{% if is_frame %}?frame=1{% endif %}" class="text-decoration-none">
+        <div class="card mb-2 post-card">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <span class="tbl-part-num">{{ part.part_number }}</span>
+              <div>
+                {% if bom_types %}
+                  {% if 'E-BOM' in bom_types %}<span class="badge bom-badge-e me-1" style="font-size:0.68rem;">E-BOM</span>{% endif %}
+                  {% if 'M-BOM' in bom_types %}<span class="badge bom-badge-m me-1" style="font-size:0.68rem;">M-BOM</span>{% endif %}
+                  {% if 'S-BOM' in bom_types %}<span class="badge bom-badge-s" style="font-size:0.68rem;">S-BOM</span>{% endif %}
+                {% else %}
+                  <span class="text-muted" style="font-size:0.75rem;">BOM 없음</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="post-card-title mt-1">{{ part.description }}</div>
+            <div class="post-card-meta d-flex gap-2">
+              {% if part.category %}<span>{{ part.category }}</span>{% endif %}
+              <span>{{ part.created_at.strftime('%Y-%m-%d') }}</span>
+            </div>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <p class="text-center text-muted py-5">검색 결과가 없습니다.</p>
+    {% endif %}
+  </div>
+
+  <!-- 페이징 -->
+  {% if total_pages > 1 %}
+  <nav class="mt-3 d-flex justify-content-center">
+    <ul class="pagination pagination-sm mb-0">
+      {% if page > 1 %}
+      <li class="page-item">
+        <a class="page-link" href="?keyword={{ keyword }}&category={{ category }}&page={{ page - 1 }}{% if is_frame %}&frame=1{% endif %}">&laquo;</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+      {% endif %}
+
+      {% set start_page = [1, page - 4] | max %}
+      {% set end_page = [total_pages, page + 4] | min %}
+      {% for p in range(start_page, end_page + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="?keyword={{ keyword }}&category={{ category }}&page={{ p }}{% if is_frame %}&frame=1{% endif %}">{{ p }}</a>
+      </li>
+      {% endfor %}
+
+      {% if page < total_pages %}
+      <li class="page-item">
+        <a class="page-link" href="?keyword={{ keyword }}&category={{ category }}&page={{ page + 1 }}{% if is_frame %}&frame=1{% endif %}">&raquo;</a>
+      </li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+</div><!-- /page-body -->
+{% endblock %}

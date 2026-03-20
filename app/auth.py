@@ -12,6 +12,7 @@ SECRET_KEY = os.environ.get("SESSION_SECRET", "act-club-session-secret-2024")
 MENU_LABELS = {
     "member": "회원모집",
     "board": "게시판",
+    "bom": "BOM",
     "admin": "관리",
 }
 

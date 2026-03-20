@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -88,3 +88,73 @@ class OperatorPermission(Base):
     menu_code = Column(String(50), nullable=False)  # 'member', 'board', 'admin'
 
     operator = relationship("Operator", back_populates="permissions")
+
+
+# ── BOM 관리 모델 ──────────────────────────────────────────────────────────────
+
+class Part(Base):
+    __tablename__ = "parts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    part_number = Column(String(20), unique=True, nullable=False)
+    description = Column(String(200), nullable=False)
+    spec = Column(String(200), nullable=False)
+    category = Column(String(30))       # '모델', '반제품', '기구자재', '회로자재', '기타'
+    unit = Column(String(20))           # 'EA', 'KG', 'M', 'SET' 등
+    weight = Column(String(20))         # 중량
+    material = Column(String(100))      # 재질
+    manufacturer = Column(String(100))  # 제조사
+    lead_time = Column(Integer)         # 리드타임(일)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class BOMHeader(Base):
+    __tablename__ = "bom_headers"
+    __table_args__ = (UniqueConstraint("part_id", "bom_type", "version"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    part_id = Column(Integer, ForeignKey("parts.id"), nullable=False)
+    bom_type = Column(String(10), nullable=False)   # 'E-BOM', 'M-BOM', 'S-BOM'
+    version = Column(Integer, default=1)
+    effective_date = Column(String(10))             # 'YYYY-MM-DD'
+    status = Column(String(20), default="작성중")   # '작성중', '승인', '폐기'
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    items = relationship("BOMItem", back_populates="bom_header", cascade="all, delete-orphan")
+    part = relationship("Part")
+
+
+class BOMItem(Base):
+    __tablename__ = "bom_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bom_id = Column(Integer, ForeignKey("bom_headers.id"), nullable=False)
+    parent_item_id = Column(Integer, ForeignKey("bom_items.id"), nullable=True)  # null이면 최상위 직속 자식
+    child_part_id = Column(Integer, ForeignKey("parts.id"), nullable=False)
+    quantity = Column(Float, default=1.0)
+    unit = Column(String(20), default="EA")
+    seq_no = Column(Integer, default=0)     # 정렬 순서
+    remark = Column(String(200))
+    created_at = Column(DateTime, default=datetime.now)
+
+    child_part = relationship("Part")
+    parent_item = relationship("BOMItem", back_populates="children", remote_side="BOMItem.id")
+    children = relationship("BOMItem", back_populates="parent_item", cascade="all, delete-orphan")
+    substitutes = relationship("BOMSubstitute", back_populates="bom_item", cascade="all, delete-orphan")
+    bom_header = relationship("BOMHeader", back_populates="items")
+
+
+class BOMSubstitute(Base):
+    __tablename__ = "bom_substitutes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bom_item_id = Column(Integer, ForeignKey("bom_items.id"), nullable=False)
+    substitute_part_id = Column(Integer, ForeignKey("parts.id"), nullable=False)
+    priority = Column(Integer, default=1)
+    remark = Column(String(200))
+    created_at = Column(DateTime, default=datetime.now)
+
+    bom_item = relationship("BOMItem", back_populates="substitutes")
+    substitute_part = relationship("Part")

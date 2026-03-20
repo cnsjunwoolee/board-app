@@ -1,0 +1,205 @@
+{% extends "layout_frame.html" %}
+{% block frame_content %}
+
+<div class="container-fluid py-3 px-3">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 mb-0">{% if part %}부품 수정{% else %}부품 등록{% endif %}</h2>
+    <a href="/bom/parts" class="btn btn-outline-secondary btn-sm">목록으로</a>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-danger alert-dismissible fade show py-2 px-3" role="alert">
+    {{ error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+  {% endif %}
+
+  <form
+    method="post"
+    action="{% if part %}/bom/parts/{{ part.id }}/edit{% else %}/bom/parts{% endif %}"
+  >
+    <div class="card">
+      <div class="card-body">
+
+        <!-- 부품번호 + 분류 -->
+        <div class="form-pair">
+          <div class="form-row-h">
+            <div class="form-lbl">부품번호 <span class="text-danger">*</span></div>
+            <div class="form-val">
+              <input
+                type="text"
+                id="part_number"
+                name="part_number"
+                class="form-control form-control-sm font-monospace"
+                placeholder="예: ELEC00001A"
+                value="{{ part.part_number if part else (form_data.part_number if form_data else '') }}"
+                required
+              />
+            </div>
+          </div>
+          <div class="form-row-h">
+            <div class="form-lbl">분류</div>
+            <div class="form-val">
+              <select id="category" name="category" class="form-select form-select-sm">
+                <option value="">선택</option>
+                {% set _cat = part.category if part else (form_data.category if form_data else '') %}
+                <option value="모델"     {% if _cat == '모델' %}selected{% endif %}>모델</option>
+                <option value="반제품"   {% if _cat == '반제품' %}selected{% endif %}>반제품</option>
+                <option value="기구자재" {% if _cat == '기구자재' %}selected{% endif %}>기구자재</option>
+                <option value="회로자재" {% if _cat == '회로자재' %}selected{% endif %}>회로자재</option>
+                <option value="기타"     {% if _cat == '기타' %}selected{% endif %}>기타</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 설명 (전체 너비) -->
+        <div class="form-row-h">
+          <div class="form-lbl">설명 <span class="text-danger">*</span></div>
+          <div class="form-val">
+            <input
+              type="text"
+              id="description"
+              name="description"
+              class="form-control form-control-sm"
+              placeholder="부품 설명을 입력하세요"
+              value="{{ part.description if part else (form_data.description if form_data else '') }}"
+              required
+            />
+          </div>
+        </div>
+
+        <!-- Spec (전체 너비) -->
+        <div class="form-row-h">
+          <div class="form-lbl">Spec <span class="text-danger">*</span></div>
+          <div class="form-val">
+            <input
+              type="text"
+              id="spec"
+              name="spec"
+              class="form-control form-control-sm"
+              placeholder="사양/규격을 입력하세요"
+              value="{{ part.spec if part else (form_data.spec if form_data else '') }}"
+              required
+            />
+          </div>
+        </div>
+
+        <!-- 단위 + 중량 -->
+        <div class="form-pair">
+          <div class="form-row-h">
+            <div class="form-lbl">단위</div>
+            <div class="form-val">
+              <select id="unit" name="unit" class="form-select form-select-sm">
+                <option value="">선택</option>
+                {% set _unit = part.unit if part else (form_data.unit if form_data else '') %}
+                <option value="EA"  {% if _unit == 'EA' %}selected{% endif %}>EA</option>
+                <option value="KG"  {% if _unit == 'KG' %}selected{% endif %}>KG</option>
+                <option value="M"   {% if _unit == 'M' %}selected{% endif %}>M</option>
+                <option value="SET" {% if _unit == 'SET' %}selected{% endif %}>SET</option>
+                <option value="L"   {% if _unit == 'L' %}selected{% endif %}>L</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row-h">
+            <div class="form-lbl">중량</div>
+            <div class="form-val">
+              <input
+                type="text"
+                id="weight"
+                name="weight"
+                class="form-control form-control-sm"
+                placeholder="예: 1.2kg"
+                value="{{ part.weight if part else (form_data.weight if form_data else '') }}"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 재질 + 제조사 -->
+        <div class="form-pair">
+          <div class="form-row-h">
+            <div class="form-lbl">재질</div>
+            <div class="form-val">
+              <input
+                type="text"
+                id="material"
+                name="material"
+                class="form-control form-control-sm"
+                placeholder="예: ABS, SUS304"
+                value="{{ part.material if part else (form_data.material if form_data else '') }}"
+              />
+            </div>
+          </div>
+          <div class="form-row-h">
+            <div class="form-lbl">제조사</div>
+            <div class="form-val">
+              <input
+                type="text"
+                id="manufacturer"
+                name="manufacturer"
+                class="form-control form-control-sm"
+                placeholder="제조사명"
+                value="{{ part.manufacturer if part else (form_data.manufacturer if form_data else '') }}"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 리드타임 (단독) -->
+        <div class="form-row-h">
+          <div class="form-lbl">리드타임</div>
+          <div class="form-val">
+            <div class="input-group input-group-sm" style="max-width: 200px;">
+              <input
+                type="number"
+                id="lead_time"
+                name="lead_time"
+                class="form-control form-control-sm"
+                min="0"
+                placeholder="0"
+                value="{{ part.lead_time if part and part.lead_time is not none else (form_data.lead_time if form_data and form_data.lead_time is not none else '') }}"
+              />
+              <span class="input-group-text">일</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card-footer d-flex gap-2 justify-content-between align-items-center">
+        <!-- 삭제 버튼 (수정 시에만 표시) -->
+        <div>
+          {% if part %}
+          <form
+            method="post"
+            action="/bom/parts/{{ part.id }}/delete"
+            onsubmit="return confirm('정말로 이 부품을 삭제하시겠습니까?\n\n부품번호: {{ part.part_number }}\n설명: {{ part.description }}');"
+            style="display:inline;"
+            id="delete-form"
+          >
+            <button type="submit" class="btn btn-outline-danger btn-sm">삭제</button>
+          </form>
+          {% endif %}
+        </div>
+        <!-- 저장/취소 버튼 -->
+        <div class="d-flex gap-2">
+          <a href="/bom/parts" class="btn btn-outline-secondary btn-sm">목록으로</a>
+          <button type="submit" class="btn btn-primary btn-sm">
+            {% if part %}수정 완료{% else %}등록{% endif %}
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<script>
+// 삭제 폼은 layout_frame.html의 POST fetch 인터셉트 대상에서 제외되지 않으므로
+// confirm이 false를 반환하면 e.defaultPrevented가 true가 되어 fetch가 실행되지 않음.
+// (layout_frame.html의 submit 핸들러에서 e.defaultPrevented 체크 로직으로 처리됨)
+</script>
+
+{% endblock %}

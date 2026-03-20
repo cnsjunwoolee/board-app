@@ -1,0 +1,1130 @@
+{% extends "layout_frame.html" %}
+
+{% block extra_head %}
+<style>
+  /* ── 편집 페이지 레이아웃 ── */
+  body.mdi-frame { background: var(--lg-bg); }
+
+  .edit-toolbar {
+    background: #fff;
+    border-bottom: 1px solid var(--lg-border);
+    padding: 0.65rem 1.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .bom-attr-card {
+    background: #fff;
+    border-bottom: 1px solid var(--lg-border);
+    padding: 0.5rem 1.25rem;
+  }
+
+  .editor-wrap {
+    padding: 1rem 1.25rem;
+  }
+
+  /* ── 에디터 테이블 ── */
+  #bomEditorTable {
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+  #bomEditorTable thead th {
+    background: var(--lg-gray-100);
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--lg-gray-700);
+    white-space: nowrap;
+    padding: 0.35rem 0.4rem;
+    border: 1px solid var(--lg-border);
+  }
+  #bomEditorTable tbody td {
+    padding: 0.2rem 0.3rem;
+    border: 1px solid var(--lg-border);
+    vertical-align: middle;
+  }
+
+  /* 드래그 핸들 */
+  .drag-handle {
+    cursor: grab;
+    color: var(--lg-gray-500);
+    font-size: 1rem;
+    padding: 0 4px;
+    user-select: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+
+  /* 드래그 중 행 스타일 */
+  tr.drag-over td { background: var(--lg-brand-hover) !important; }
+  tr.dragging { opacity: 0.4; }
+
+  /* 인라인 입력 */
+  .cell-input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-size: 0.82rem;
+    padding: 1px 2px;
+    outline: none;
+    color: var(--lg-gray-900);
+  }
+  .cell-input:focus {
+    background: #fff;
+    border-bottom: 1px solid var(--lg-brand);
+    border-radius: 0;
+  }
+  .cell-select {
+    border: none;
+    background: transparent;
+    font-size: 0.82rem;
+    padding: 1px 2px;
+    outline: none;
+    width: 100%;
+    color: var(--lg-gray-900);
+  }
+  .cell-select:focus {
+    background: #fff;
+    border-bottom: 1px solid var(--lg-brand);
+  }
+
+  /* 레벨 배지 */
+  .level-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--lg-gray-500);
+    border-radius: 3px;
+    padding: 0 5px;
+    line-height: 1.6;
+    min-width: 18px;
+    text-align: center;
+  }
+  .level-badge.lv1 { background: var(--lg-brand); }
+  .level-badge.lv2 { background: #1976d2; }
+  .level-badge.lv3 { background: #388e3c; }
+  .level-badge.lv4 { background: #f57c00; }
+
+  /* 부품번호 셀 */
+  .pn-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pn-indent { flex-shrink: 0; }
+
+  /* 대치품 버튼 */
+  .sub-badge {
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--lg-brand-light);
+    color: var(--lg-brand);
+    border: 1px solid var(--lg-brand);
+    white-space: nowrap;
+  }
+  .sub-badge:hover { background: var(--lg-brand); color: #fff; }
+
+  /* 작업 버튼 */
+  .action-btn {
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--lg-border);
+    background: #fff;
+    color: var(--lg-gray-700);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .action-btn:hover { border-color: var(--lg-brand); color: var(--lg-brand); }
+  .action-btn.del { color: #dc3545; border-color: #dc3545; }
+  .action-btn.del:hover { background: #dc3545; color: #fff; }
+
+  /* 하이라이트 (BOM 내 검색) */
+  tr.search-highlight td { background: #fffde7 !important; }
+
+  /* 빈 상태 */
+  .empty-bom {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--lg-gray-500);
+    font-size: 0.88rem;
+  }
+
+  /* 모달 내 검색 결과 테이블 */
+  .search-result-table td, .search-result-table th {
+    font-size: 0.82rem;
+    padding: 0.3rem 0.5rem;
+  }
+  .search-result-table tbody tr { cursor: pointer; }
+  .search-result-table tbody tr:hover { background: var(--lg-brand-hover); }
+
+  /* 대치품 모달 */
+  .sub-row td { font-size: 0.82rem; padding: 0.3rem 0.5rem; }
+</style>
+{% endblock %}
+
+{% block frame_content %}
+
+<!-- ── 상단 툴바 ── -->
+<div class="edit-toolbar">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h2 class="h5 mb-0" style="color:var(--lg-gray-900);">
+        BOM 편집 &mdash; <span style="font-family:'Courier New',monospace; color:var(--lg-brand);">{{ part.part_number }}</span>
+      </h2>
+      <small class="text-muted">{{ part.description }} &nbsp;|&nbsp; {{ bom_type }} v{{ bom.version if bom else 1 }}</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-sm btn-outline-secondary" onclick="addRootItem()">+ 자재추가</button>
+      <button class="btn btn-sm btn-outline-warning" onclick="showSearchModal()">검색으로 추가</button>
+      <button class="btn btn-sm btn-outline-info" onclick="showExcelUpload()">Excel 업로드</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="searchInBom()">BOM 내 검색</button>
+      <button class="btn btn-sm btn-primary" onclick="saveBom()">저장</button>
+      <a href="/bom/detail/{{ part.id }}?bom_type={{ bom_type }}{% if bom %}&version={{ bom.version }}{% endif %}{% if is_frame %}&frame=1{% endif %}"
+         class="btn btn-sm btn-outline-secondary">취소</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── BOM 속성 바 ── -->
+<div class="bom-attr-card">
+  <div class="d-flex gap-3 flex-wrap align-items-center" style="font-size:0.85rem;">
+    <div class="d-flex align-items-center gap-1">
+      <span class="text-muted">상태:</span>
+      <select id="bomStatus" class="form-select form-select-sm d-inline-block" style="width:auto;">
+        <option value="작성중" {% if not bom or bom.status == '작성중' %}selected{% endif %}>작성중</option>
+        <option value="승인" {% if bom and bom.status == '승인' %}selected{% endif %}>승인</option>
+        <option value="폐기" {% if bom and bom.status == '폐기' %}selected{% endif %}>폐기</option>
+      </select>
+    </div>
+    <div class="d-flex align-items-center gap-1">
+      <span class="text-muted">적용일:</span>
+      <input type="date" id="effectiveDate" class="form-control form-control-sm d-inline-block"
+             style="width:auto;" value="{{ bom.effective_date if bom and bom.effective_date else '' }}">
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="createNewVersion()">새 버전 생성</button>
+    <span class="ms-auto text-muted" style="font-size:0.78rem;" id="itemCountLabel"></span>
+  </div>
+</div>
+
+<!-- ── 에디터 테이블 ── -->
+<div class="editor-wrap">
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm" id="bomEditorTable" style="font-size:0.82rem; min-width:900px;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:28px;"></th>
+          <th style="width:32px;" class="text-center">Lv</th>
+          <th style="min-width:140px;">부품번호</th>
+          <th style="min-width:160px;">설명</th>
+          <th style="min-width:120px;">Spec</th>
+          <th style="width:68px;" class="text-center">수량</th>
+          <th style="width:62px;" class="text-center">단위</th>
+          <th style="width:80px;" class="text-center">분류</th>
+          <th style="width:70px;" class="text-center">대치품</th>
+          <th style="min-width:110px;">비고</th>
+          <th style="width:105px;" class="text-center">작업</th>
+        </tr>
+      </thead>
+      <tbody id="bomEditorBody">
+        <!-- JavaScript로 동적 렌더링 -->
+      </tbody>
+    </table>
+  </div>
+  <div id="emptyBomMsg" class="empty-bom" style="display:none;">
+    <div style="font-size:2rem; color:var(--lg-gray-300); margin-bottom:0.5rem;">&#9741;</div>
+    등록된 자재가 없습니다. <strong>+ 자재추가</strong> 또는 <strong>검색으로 추가</strong>를 클릭하세요.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     모달: 자재 검색 추가
+══════════════════════════════════════════ -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title h6" id="searchModalLabel">자재 검색으로 추가</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group mb-3">
+          <input type="text" id="searchModalInput" class="form-control form-control-sm"
+                 placeholder="부품번호 또는 설명 입력 후 Enter">
+          <button class="btn btn-primary btn-sm" onclick="searchParts(document.getElementById('searchModalInput').value)">검색</button>
+        </div>
+        <div style="font-size:0.78rem; color:var(--lg-gray-500); margin-bottom:0.5rem;">
+          추가 위치: <span id="searchAddTarget" class="fw-semibold" style="color:var(--lg-brand);">루트 (최상위)</span>
+        </div>
+        <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
+          <table class="table table-bordered table-sm search-result-table" id="searchResultTable">
+            <thead class="table-light">
+              <tr>
+                <th>부품번호</th>
+                <th>설명</th>
+                <th>Spec</th>
+                <th style="width:60px;">단위</th>
+                <th style="width:70px;">분류</th>
+              </tr>
+            </thead>
+            <tbody id="searchResultBody">
+              <tr><td colspan="5" class="text-center text-muted py-3">검색어를 입력하세요.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     모달: Excel 업로드
+══════════════════════════════════════════ -->
+<div class="modal fade" id="excelModal" tabindex="-1" aria-labelledby="excelModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title h6" id="excelModalLabel">Excel 일괄 업로드</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info py-2" style="font-size:0.82rem;">
+          <strong>Excel 형식 안내</strong><br>
+          1행: 헤더 (Level, 부품번호, 수량, 단위, 비고)<br>
+          2행~: 데이터 (Level 숫자로 계층 구조 표현)
+        </div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:0.85rem;">파일 선택 (.xlsx)</label>
+          <input type="file" id="excelFileInput" class="form-control form-control-sm" accept=".xlsx">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="uploadExcel()">업로드 및 적용</button>
+        <div id="excelResult" class="mt-3" style="display:none;"></div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     모달: 대치품 관리
+══════════════════════════════════════════ -->
+<div class="modal fade" id="substituteModal" tabindex="-1" aria-labelledby="substituteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title h6" id="substituteModalLabel">대치품 관리</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2" style="font-size:0.82rem; color:var(--lg-gray-500);">
+          대상 자재: <strong id="subTargetPart" style="color:var(--lg-brand);"></strong>
+        </div>
+
+        <!-- 현재 대치품 목록 -->
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered table-sm">
+            <thead class="table-light">
+              <tr>
+                <th style="font-size:0.76rem;">우선순위</th>
+                <th style="font-size:0.76rem;">부품번호</th>
+                <th style="font-size:0.76rem;">설명</th>
+                <th style="font-size:0.76rem;">비고</th>
+                <th style="width:50px; font-size:0.76rem;"></th>
+              </tr>
+            </thead>
+            <tbody id="substituteList">
+              <tr><td colspan="5" class="text-center text-muted py-2">대치품 없음</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 대치품 검색 추가 -->
+        <div style="border-top:1px solid var(--lg-border); padding-top:0.75rem;">
+          <div class="fw-semibold mb-2" style="font-size:0.82rem;">대치품 검색 추가</div>
+          <div class="input-group mb-2">
+            <input type="text" id="subSearchInput" class="form-control form-control-sm"
+                   placeholder="부품번호 또는 설명 입력">
+            <button class="btn btn-outline-secondary btn-sm"
+                    onclick="searchSubstitutes(document.getElementById('subSearchInput').value)">검색</button>
+          </div>
+          <div class="table-responsive" style="max-height:200px; overflow-y:auto;">
+            <table class="table table-bordered table-sm search-result-table" id="subSearchResultTable">
+              <thead class="table-light">
+                <tr>
+                  <th>부품번호</th>
+                  <th>설명</th>
+                  <th style="width:60px;">단위</th>
+                </tr>
+              </thead>
+              <tbody id="subSearchResultBody">
+                <tr><td colspan="3" class="text-center text-muted py-2">검색어를 입력하세요.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal" onclick="confirmSubstitutes()">확인</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  // ════════════════════════════════════════════
+  // 상수 / 서버 데이터
+  // ════════════════════════════════════════════
+  const PART_ID   = {{ part.id }};
+  const BOM_TYPE  = {{ bom_type | tojson }};
+  const BOM_VER   = {{ (bom.version if bom else 1) | int }};
+  const IS_FRAME  = {{ 'true' if is_frame else 'false' }};
+
+  // ════════════════════════════════════════════
+  // 데이터 모델
+  // ════════════════════════════════════════════
+  let bomItems = [];
+  // 구조: [{
+  //   id, child_part_id, part_number, description, spec, category,
+  //   quantity, unit, seq_no, remark, level, parent_idx,
+  //   substitutes: [{part_id, part_number, description, priority, remark}]
+  // }]
+
+  // ── 초기 데이터 로드 ──
+  try {
+    const raw = {{ tree_data_json | safe }};
+    bomItems = raw || [];
+  } catch (e) {
+    bomItems = [];
+  }
+
+  // ════════════════════════════════════════════
+  // 렌더링
+  // ════════════════════════════════════════════
+  function renderBomTable() {
+    const tbody = document.getElementById('bomEditorBody');
+    const emptyMsg = document.getElementById('emptyBomMsg');
+    const countLabel = document.getElementById('itemCountLabel');
+
+    if (!bomItems.length) {
+      tbody.innerHTML = '';
+      emptyMsg.style.display = '';
+      countLabel.textContent = '';
+      return;
+    }
+    emptyMsg.style.display = 'none';
+    countLabel.textContent = '총 ' + bomItems.length + '개 자재';
+
+    let html = '';
+    bomItems.forEach(function (item, idx) {
+      const lvClass = 'lv' + Math.min(item.level, 4);
+      const indent = (item.level - 1) * 18;
+      const subCount = (item.substitutes || []).length;
+      const subLabel = subCount > 0 ? '대치 ' + subCount : '+ 대치';
+
+      const unitOptions = ['EA','KG','M','SET','BOX','L','mm','g','PCS'].map(function(u){
+        return '<option value="' + u + '"' + (item.unit === u ? ' selected' : '') + '>' + u + '</option>';
+      }).join('');
+
+      html += '<tr data-idx="' + idx + '" draggable="true" ondragstart="onDragStart(event,' + idx + ')"'
+            + ' ondragover="onDragOver(event,' + idx + ')" ondrop="onDrop(event,' + idx + ')"'
+            + ' ondragleave="onDragLeave(event)">';
+
+      // 드래그 핸들
+      html += '<td class="text-center"><span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
+
+      // 레벨
+      html += '<td class="text-center"><span class="level-badge ' + lvClass + '">' + item.level + '</span></td>';
+
+      // 부품번호
+      html += '<td><div class="pn-cell">'
+            + '<span class="pn-indent" style="width:' + indent + 'px; flex-shrink:0;"></span>'
+            + '<input type="text" class="cell-input pn-input" data-idx="' + idx + '"'
+            + ' value="' + esc(item.part_number) + '" placeholder="부품번호"'
+            + ' onblur="onPartNumberBlur(this,' + idx + ')"'
+            + ' onkeydown="onPartNumberKeydown(event,this,' + idx + ')">'
+            + '</div></td>';
+
+      // 설명
+      html += '<td><input type="text" class="cell-input" data-field="description" data-idx="' + idx + '"'
+            + ' value="' + esc(item.description) + '" placeholder="-" readonly'
+            + ' style="color:var(--lg-gray-500);"></td>';
+
+      // Spec
+      html += '<td><input type="text" class="cell-input" data-field="spec" data-idx="' + idx + '"'
+            + ' value="' + esc(item.spec) + '" placeholder="-" readonly'
+            + ' style="color:var(--lg-gray-500); font-size:0.78rem;"></td>';
+
+      // 수량
+      html += '<td><input type="number" class="cell-input text-end" data-field="quantity" data-idx="' + idx + '"'
+            + ' value="' + item.quantity + '" min="0" step="any"'
+            + ' oninput="onFieldInput(this,' + idx + ',\'quantity\',true)"></td>';
+
+      // 단위
+      html += '<td><select class="cell-select" data-field="unit" data-idx="' + idx + '"'
+            + ' onchange="onFieldInput(this,' + idx + ',\'unit\',false)">'
+            + unitOptions + '</select></td>';
+
+      // 분류
+      html += '<td class="text-center"><span style="font-size:0.75rem; color:var(--lg-gray-500);">'
+            + esc(item.category || '') + '</span></td>';
+
+      // 대치품
+      html += '<td class="text-center"><span class="sub-badge" onclick="openSubstituteModal(' + idx + ')">'
+            + subLabel + '</span></td>';
+
+      // 비고
+      html += '<td><input type="text" class="cell-input" data-field="remark" data-idx="' + idx + '"'
+            + ' value="' + esc(item.remark) + '" placeholder=""'
+            + ' oninput="onFieldInput(this,' + idx + ',\'remark\',false)"></td>';
+
+      // 작업
+      html += '<td class="text-center">'
+            + '<button class="action-btn" onclick="addChildItem(' + idx + ')" title="하위 자재 추가">+하위</button> '
+            + '<button class="action-btn del" onclick="removeItem(' + idx + ')" title="삭제">삭제</button>'
+            + '</td>';
+
+      html += '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
+  // HTML 특수문자 이스케이프
+  function esc(str) {
+    if (!str && str !== 0) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  // ════════════════════════════════════════════
+  // 필드 변경 핸들러
+  // ════════════════════════════════════════════
+  function onFieldInput(el, idx, field, isNum) {
+    if (!bomItems[idx]) return;
+    bomItems[idx][field] = isNum ? parseFloat(el.value) || 0 : el.value;
+  }
+
+  // ════════════════════════════════════════════
+  // 부품번호 Key-In 자동 조회
+  // ════════════════════════════════════════════
+  function onPartNumberBlur(el, idx) {
+    const pn = el.value.trim();
+    if (!pn) return;
+    fetchPartInfo(pn, idx);
+  }
+
+  function onPartNumberKeydown(e, el, idx) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      el.blur();
+    }
+  }
+
+  function fetchPartInfo(partNumber, idx) {
+    fetch('/bom/api/part-info/' + encodeURIComponent(partNumber))
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (!data.found) return;
+        bomItems[idx].child_part_id = data.id;
+        bomItems[idx].part_number   = data.part_number;
+        bomItems[idx].description   = data.description;
+        bomItems[idx].spec          = data.spec;
+        bomItems[idx].category      = data.category;
+        if (!bomItems[idx].unit || bomItems[idx].unit === 'EA') {
+          bomItems[idx].unit = data.unit || 'EA';
+        }
+        renderBomTable();
+      })
+      .catch(function(){ /* 무시 */ });
+  }
+
+  // ════════════════════════════════════════════
+  // 자재 추가
+  // ════════════════════════════════════════════
+  window.addRootItem = function() {
+    bomItems.push({
+      id: null, child_part_id: null, part_number: '', description: '',
+      spec: '', category: '', quantity: 1, unit: 'EA',
+      seq_no: bomItems.length, remark: '', level: 1, parent_idx: null,
+      substitutes: []
+    });
+    renderBomTable();
+    // 마지막 행의 부품번호 입력란에 포커스
+    setTimeout(function() {
+      const inputs = document.querySelectorAll('.pn-input');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }, 50);
+  };
+
+  window.addChildItem = function(parentIdx) {
+    const parent = bomItems[parentIdx];
+    if (!parent) return;
+    const childLevel = parent.level + 1;
+
+    // parentIdx 이후 자식들의 끝 위치 찾기
+    let insertPos = parentIdx + 1;
+    while (insertPos < bomItems.length && bomItems[insertPos].level > parent.level) {
+      insertPos++;
+    }
+
+    // 삽입 위치 이후 항목들의 parent_idx 보정
+    const newItem = {
+      id: null, child_part_id: null, part_number: '', description: '',
+      spec: '', category: '', quantity: 1, unit: 'EA',
+      seq_no: insertPos, remark: '', level: childLevel, parent_idx: parentIdx,
+      substitutes: []
+    };
+
+    bomItems.splice(insertPos, 0, newItem);
+    // 삽입 후 idx 보정
+    fixParentIdxAfterInsert(insertPos);
+    renderBomTable();
+    setTimeout(function() {
+      const inputs = document.querySelectorAll('.pn-input');
+      if (inputs[insertPos]) inputs[insertPos].focus();
+    }, 50);
+  };
+
+  function fixParentIdxAfterInsert(insertPos) {
+    // insertPos 이후 항목들 중 parent_idx >= insertPos인 것을 +1
+    for (let i = insertPos + 1; i < bomItems.length; i++) {
+      if (bomItems[i].parent_idx !== null && bomItems[i].parent_idx >= insertPos) {
+        bomItems[i].parent_idx += 1;
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════
+  // 자재 삭제
+  // ════════════════════════════════════════════
+  window.removeItem = function(idx) {
+    if (!confirm('선택한 자재와 하위 자재를 모두 삭제합니다. 계속하시겠습니까?')) return;
+
+    // 삭제할 인덱스 수집 (해당 항목 + 하위)
+    const toRemove = collectDescendants(idx);
+    toRemove.sort(function(a, b) { return b - a; }); // 뒤에서부터 삭제
+    toRemove.forEach(function(i) { bomItems.splice(i, 1); });
+
+    // parent_idx 재정규화
+    rebuildParentIdx();
+    renderBomTable();
+  };
+
+  function collectDescendants(idx) {
+    const result = [idx];
+    const targetLevel = bomItems[idx] ? bomItems[idx].level : 0;
+    for (let i = idx + 1; i < bomItems.length; i++) {
+      if (bomItems[i].level > targetLevel) {
+        result.push(i);
+      } else {
+        break;
+      }
+    }
+    return result;
+  }
+
+  // 전체 parent_idx 재계산 (level 기반)
+  function rebuildParentIdx() {
+    // 각 항목의 parent_idx를 level 스택으로 재계산
+    const levelStack = {};
+    bomItems.forEach(function(item, i) {
+      const lv = item.level;
+      if (lv <= 1) {
+        item.parent_idx = null;
+      } else {
+        item.parent_idx = levelStack[lv - 1] !== undefined ? levelStack[lv - 1] : null;
+      }
+      levelStack[lv] = i;
+      // 현재보다 깊은 레벨 스택 제거
+      Object.keys(levelStack).forEach(function(k) {
+        if (parseInt(k) > lv) delete levelStack[k];
+      });
+    });
+  }
+
+  // ════════════════════════════════════════════
+  // Drag & Drop (HTML5 drag API)
+  // ════════════════════════════════════════════
+  let dragSrcIdx = null;
+
+  window.onDragStart = function(e, idx) {
+    dragSrcIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('dragging');
+  };
+
+  window.onDragOver = function(e, idx) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('#bomEditorBody tr').forEach(function(r) {
+      r.classList.remove('drag-over');
+    });
+    e.currentTarget.classList.add('drag-over');
+  };
+
+  window.onDragLeave = function(e) {
+    e.currentTarget.classList.remove('drag-over');
+  };
+
+  window.onDrop = function(e, targetIdx) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    document.querySelectorAll('#bomEditorBody tr').forEach(function(r) {
+      r.classList.remove('dragging', 'drag-over');
+    });
+
+    if (dragSrcIdx === null || dragSrcIdx === targetIdx) {
+      dragSrcIdx = null;
+      return;
+    }
+
+    // 같은 레벨인 경우에만 이동 허용
+    const srcItem = bomItems[dragSrcIdx];
+    const tgtItem = bomItems[targetIdx];
+    if (!srcItem || !tgtItem || srcItem.level !== tgtItem.level) {
+      dragSrcIdx = null;
+      return;
+    }
+
+    // 이동할 항목(+자손) 추출
+    const srcGroup = collectDescendants(dragSrcIdx);
+    const movedItems = srcGroup.map(function(i) { return bomItems[i]; });
+
+    // 원래 위치에서 제거
+    srcGroup.sort(function(a,b){return b-a;}).forEach(function(i){
+      bomItems.splice(i, 1);
+    });
+
+    // 삽입 위치 재계산 (제거 후 targetIdx 보정)
+    let newTarget = targetIdx;
+    if (dragSrcIdx < targetIdx) {
+      newTarget -= srcGroup.length;
+    }
+    newTarget = Math.max(0, Math.min(newTarget, bomItems.length));
+
+    // 목적지 이후 자손 뒤에 삽입
+    let insertAt = newTarget;
+    while (insertAt < bomItems.length && bomItems[insertAt].level > tgtItem.level) {
+      insertAt++;
+    }
+
+    movedItems.forEach(function(item, i) {
+      bomItems.splice(insertAt + i, 0, item);
+    });
+
+    rebuildParentIdx();
+    renderBomTable();
+    dragSrcIdx = null;
+  };
+
+  // ════════════════════════════════════════════
+  // BOM 내 검색
+  // ════════════════════════════════════════════
+  window.searchInBom = function() {
+    const keyword = prompt('검색할 부품번호 또는 설명:');
+    if (!keyword) return;
+    const kw = keyword.trim().toLowerCase();
+
+    document.querySelectorAll('#bomEditorBody tr').forEach(function(row) {
+      row.classList.remove('search-highlight');
+    });
+
+    let firstMatch = null;
+    bomItems.forEach(function(item, idx) {
+      if (
+        (item.part_number && item.part_number.toLowerCase().includes(kw)) ||
+        (item.description && item.description.toLowerCase().includes(kw))
+      ) {
+        const row = document.querySelector('#bomEditorBody tr[data-idx="' + idx + '"]');
+        if (row) {
+          row.classList.add('search-highlight');
+          if (!firstMatch) firstMatch = row;
+        }
+      }
+    });
+
+    if (firstMatch) {
+      firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      alert('검색 결과가 없습니다: ' + keyword);
+    }
+  };
+
+  // ════════════════════════════════════════════
+  // Excel 업로드
+  // ════════════════════════════════════════════
+  window.showExcelUpload = function() {
+    const modal = new bootstrap.Modal(document.getElementById('excelModal'));
+    document.getElementById('excelResult').style.display = 'none';
+    modal.show();
+  };
+
+  window.uploadExcel = function() {
+    const fileInput = document.getElementById('excelFileInput');
+    const resultDiv = document.getElementById('excelResult');
+    if (!fileInput.files.length) {
+      alert('파일을 선택해주세요.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    fetch('/bom/edit/' + PART_ID + '/upload-excel', {
+      method: 'POST',
+      body: formData,
+      credentials: 'same-origin'
+    })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(d){ throw new Error(d.error || '서버 오류'); });
+      return r.json();
+    })
+    .then(function(data) {
+      resultDiv.style.display = '';
+      let html = '<div class="alert alert-' + (data.fail > 0 ? 'warning' : 'success') + ' py-2" style="font-size:0.82rem;">'
+                + '성공: <strong>' + data.success + '</strong>건 / 실패: <strong>' + data.fail + '</strong>건</div>';
+      if (data.errors && data.errors.length) {
+        html += '<ul class="mb-0" style="font-size:0.78rem; color:#dc3545;">';
+        data.errors.forEach(function(e) { html += '<li>' + esc(e) + '</li>'; });
+        html += '</ul>';
+      }
+      resultDiv.innerHTML = html;
+
+      if (data.items && data.items.length) {
+        // 기존 bomItems에 추가
+        const offset = bomItems.length;
+        data.items.forEach(function(item) {
+          const newItem = Object.assign({}, item);
+          if (newItem.parent_idx !== null && newItem.parent_idx !== undefined) {
+            newItem.parent_idx += offset;
+          }
+          bomItems.push(newItem);
+        });
+        renderBomTable();
+      }
+    })
+    .catch(function(err) {
+      resultDiv.style.display = '';
+      resultDiv.innerHTML = '<div class="alert alert-danger py-2" style="font-size:0.82rem;">' + esc(err.message) + '</div>';
+    });
+  };
+
+  // ════════════════════════════════════════════
+  // 저장
+  // ════════════════════════════════════════════
+  window.saveBom = function() {
+    const status = document.getElementById('bomStatus').value;
+    const effectiveDate = document.getElementById('effectiveDate').value || null;
+
+    // 유효성 검사
+    const invalidItems = bomItems.filter(function(item) { return !item.child_part_id; });
+    if (invalidItems.length) {
+      alert('부품번호가 입력되지 않은 자재가 ' + invalidItems.length + '개 있습니다.\n부품번호를 입력하거나 해당 행을 삭제해주세요.');
+      return;
+    }
+
+    const payload = {
+      bom_type: BOM_TYPE,
+      version: BOM_VER,
+      effective_date: effectiveDate,
+      status: status,
+      items: bomItems.map(function(item, idx) {
+        return {
+          child_part_id: item.child_part_id,
+          parent_idx: item.parent_idx,
+          quantity: parseFloat(item.quantity) || 1,
+          unit: item.unit || 'EA',
+          seq_no: idx,
+          remark: item.remark || '',
+          substitutes: (item.substitutes || []).map(function(s) {
+            return {
+              part_id: s.part_id,
+              priority: s.priority || 1,
+              remark: s.remark || ''
+            };
+          })
+        };
+      })
+    };
+
+    fetch('/bom/edit/' + PART_ID + '/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'same-origin'
+    })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(d){ throw new Error(d.error || '저장 실패'); });
+      return r.json();
+    })
+    .then(function(data) {
+      let detailUrl = '/bom/detail/' + PART_ID + '?bom_type=' + encodeURIComponent(BOM_TYPE)
+                    + '&version=' + data.version;
+      if (IS_FRAME) detailUrl += '&frame=1';
+      window.location.href = detailUrl;
+    })
+    .catch(function(err) {
+      alert('저장 중 오류 발생: ' + err.message);
+    });
+  };
+
+  // ════════════════════════════════════════════
+  // 자재 검색 모달
+  // ════════════════════════════════════════════
+  let searchTargetIdx = null; // null이면 루트에 추가
+
+  window.showSearchModal = function(parentIdx) {
+    searchTargetIdx = (parentIdx !== undefined) ? parentIdx : null;
+    const label = document.getElementById('searchAddTarget');
+    if (searchTargetIdx !== null && bomItems[searchTargetIdx]) {
+      label.textContent = bomItems[searchTargetIdx].part_number + ' 하위';
+    } else {
+      label.textContent = '루트 (최상위)';
+    }
+    document.getElementById('searchModalInput').value = '';
+    document.getElementById('searchResultBody').innerHTML =
+      '<tr><td colspan="5" class="text-center text-muted py-3">검색어를 입력하세요.</td></tr>';
+    const modal = new bootstrap.Modal(document.getElementById('searchModal'));
+    modal.show();
+    setTimeout(function(){ document.getElementById('searchModalInput').focus(); }, 400);
+  };
+
+  // Enter 키로 검색
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('searchModalInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') searchParts(this.value);
+    });
+    document.getElementById('subSearchInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') searchSubstitutes(this.value);
+    });
+  });
+
+  window.searchParts = function(query) {
+    if (!query || !query.trim()) return;
+    fetch('/bom/parts/api/search?q=' + encodeURIComponent(query.trim()))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        const tbody = document.getElementById('searchResultBody');
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-2">검색 결과 없음</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(function(p) {
+          return '<tr onclick="addPartFromSearch(' + JSON.stringify(p).replace(/"/g,'&quot;') + ')">'
+            + '<td style="font-family:\'Courier New\',monospace;">' + esc(p.part_number) + '</td>'
+            + '<td>' + esc(p.description) + '</td>'
+            + '<td>' + esc(p.spec || '') + '</td>'
+            + '<td class="text-center">' + esc(p.unit || 'EA') + '</td>'
+            + '<td class="text-center"><span style="font-size:0.72rem;color:var(--lg-gray-500);">' + esc(p.category || '') + '</span></td>'
+            + '</tr>';
+        }).join('');
+      })
+      .catch(function() {
+        document.getElementById('searchResultBody').innerHTML =
+          '<tr><td colspan="5" class="text-center text-muted py-2">검색 오류</td></tr>';
+      });
+  };
+
+  window.addPartFromSearch = function(partData) {
+    const level = (searchTargetIdx !== null && bomItems[searchTargetIdx])
+                  ? bomItems[searchTargetIdx].level + 1
+                  : 1;
+
+    const newItem = {
+      id: null,
+      child_part_id: partData.id,
+      part_number: partData.part_number,
+      description: partData.description,
+      spec: partData.spec || '',
+      category: partData.category || '',
+      quantity: 1,
+      unit: partData.unit || 'EA',
+      seq_no: bomItems.length,
+      remark: '',
+      level: level,
+      parent_idx: searchTargetIdx,
+      substitutes: []
+    };
+
+    if (searchTargetIdx !== null) {
+      // 부모 항목 바로 아래 자손들 끝에 삽입
+      let insertPos = searchTargetIdx + 1;
+      while (insertPos < bomItems.length && bomItems[insertPos].level > bomItems[searchTargetIdx].level) {
+        insertPos++;
+      }
+      bomItems.splice(insertPos, 0, newItem);
+      fixParentIdxAfterInsert(insertPos);
+    } else {
+      bomItems.push(newItem);
+    }
+
+    renderBomTable();
+
+    // 모달 닫기
+    const modalEl = document.getElementById('searchModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+  };
+
+  // ════════════════════════════════════════════
+  // 대치품 관리 모달
+  // ════════════════════════════════════════════
+  let subTargetIdx = null;
+
+  window.openSubstituteModal = function(idx) {
+    subTargetIdx = idx;
+    const item = bomItems[idx];
+    document.getElementById('subTargetPart').textContent = item.part_number || '(미입력)';
+    renderSubstituteList();
+    document.getElementById('subSearchInput').value = '';
+    document.getElementById('subSearchResultBody').innerHTML =
+      '<tr><td colspan="3" class="text-center text-muted py-2">검색어를 입력하세요.</td></tr>';
+    const modal = new bootstrap.Modal(document.getElementById('substituteModal'));
+    modal.show();
+  };
+
+  function renderSubstituteList() {
+    if (subTargetIdx === null) return;
+    const subs = bomItems[subTargetIdx].substitutes || [];
+    const tbody = document.getElementById('substituteList');
+    if (!subs.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-2">대치품 없음</td></tr>';
+      return;
+    }
+    tbody.innerHTML = subs.map(function(s, si) {
+      return '<tr class="sub-row">'
+        + '<td class="text-center">'
+          + '<input type="number" class="form-control form-control-sm text-center" style="width:55px;display:inline-block;"'
+          + ' value="' + (s.priority || 1) + '" min="1"'
+          + ' onchange="updateSubPriority(' + si + ',this.value)">'
+          + '</td>'
+        + '<td style="font-family:\'Courier New\',monospace; font-size:0.8rem;">' + esc(s.part_number) + '</td>'
+        + '<td>' + esc(s.description) + '</td>'
+        + '<td><input type="text" class="form-control form-control-sm" style="font-size:0.78rem;"'
+          + ' value="' + esc(s.remark) + '" placeholder="비고"'
+          + ' onchange="updateSubRemark(' + si + ',this.value)"></td>'
+        + '<td class="text-center">'
+          + '<button class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size:0.72rem;" onclick="removeSubstitute(' + si + ')">삭제</button>'
+          + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  window.updateSubPriority = function(si, val) {
+    if (subTargetIdx === null) return;
+    bomItems[subTargetIdx].substitutes[si].priority = parseInt(val) || 1;
+  };
+
+  window.updateSubRemark = function(si, val) {
+    if (subTargetIdx === null) return;
+    bomItems[subTargetIdx].substitutes[si].remark = val;
+  };
+
+  window.removeSubstitute = function(si) {
+    if (subTargetIdx === null) return;
+    bomItems[subTargetIdx].substitutes.splice(si, 1);
+    renderSubstituteList();
+    renderBomTable();
+  };
+
+  window.searchSubstitutes = function(query) {
+    if (!query || !query.trim()) return;
+    fetch('/bom/parts/api/search?q=' + encodeURIComponent(query.trim()))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        const tbody = document.getElementById('subSearchResultBody');
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-2">검색 결과 없음</td></tr>';
+          return;
+        }
+        tbody.innerHTML = data.map(function(p) {
+          return '<tr onclick="addSubstituteFromSearch(' + JSON.stringify(p).replace(/"/g,'&quot;') + ')">'
+            + '<td style="font-family:\'Courier New\',monospace;">' + esc(p.part_number) + '</td>'
+            + '<td>' + esc(p.description) + '</td>'
+            + '<td class="text-center">' + esc(p.unit || 'EA') + '</td>'
+            + '</tr>';
+        }).join('');
+      })
+      .catch(function() {
+        document.getElementById('subSearchResultBody').innerHTML =
+          '<tr><td colspan="3" class="text-center text-muted py-2">검색 오류</td></tr>';
+      });
+  };
+
+  window.addSubstituteFromSearch = function(partData) {
+    if (subTargetIdx === null) return;
+    const subs = bomItems[subTargetIdx].substitutes;
+
+    // 중복 체크
+    if (subs.some(function(s){ return s.part_id === partData.id; })) {
+      alert('이미 추가된 대치품입니다.');
+      return;
+    }
+    subs.push({
+      part_id: partData.id,
+      part_number: partData.part_number,
+      description: partData.description,
+      priority: subs.length + 1,
+      remark: ''
+    });
+    renderSubstituteList();
+    renderBomTable();
+  };
+
+  window.confirmSubstitutes = function() {
+    renderBomTable();
+  };
+
+  // ════════════════════════════════════════════
+  // 새 버전 생성
+  // ════════════════════════════════════════════
+  window.createNewVersion = function() {
+    if (!confirm('현재 BOM을 복사하여 새 버전을 생성합니다. 계속하시겠습니까?')) return;
+
+    fetch('/bom/edit/' + PART_ID + '/new-version', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bom_type: BOM_TYPE, version: BOM_VER }),
+      credentials: 'same-origin'
+    })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(d){ throw new Error(d.error || '오류 발생'); });
+      return r.json();
+    })
+    .then(function(data) {
+      let editUrl = '/bom/edit/' + PART_ID + '?bom_type=' + encodeURIComponent(BOM_TYPE)
+                  + '&version=' + data.version;
+      if (IS_FRAME) editUrl += '&frame=1';
+      window.location.href = editUrl;
+    })
+    .catch(function(err) {
+      alert('새 버전 생성 오류: ' + err.message);
+    });
+  };
+
+  // ════════════════════════════════════════════
+  // 초기 렌더링
+  // ════════════════════════════════════════════
+  renderBomTable();
+
+})();
+</script>
+{% endblock %}
