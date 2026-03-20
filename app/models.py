@@ -132,7 +132,6 @@ class BOMItem(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     bom_id = Column(Integer, ForeignKey("bom_headers.id"), nullable=False)
-    parent_item_id = Column(Integer, ForeignKey("bom_items.id"), nullable=True)  # null이면 최상위 직속 자식
     child_part_id = Column(Integer, ForeignKey("parts.id"), nullable=False)
     quantity = Column(Float, default=1.0)
     unit = Column(String(20), default="EA")
@@ -143,8 +142,6 @@ class BOMItem(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     child_part = relationship("Part")
-    parent_item = relationship("BOMItem", back_populates="children", remote_side="BOMItem.id")
-    children = relationship("BOMItem", back_populates="parent_item", cascade="all, delete-orphan")
     substitutes = relationship("BOMSubstitute", back_populates="bom_item", cascade="all, delete-orphan")
     bom_header = relationship("BOMHeader", back_populates="items")
 

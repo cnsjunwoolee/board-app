@@ -16,13 +16,35 @@ BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-# ── 헬퍼: BOM 트리 빌드 ──────────────────────────────────────────────────────
+# ── 헬퍼: 재귀적 BOM 트리 빌드 ────────────────────────────────────────────────
 
-def build_bom_tree(bom_id: int, db: Session):
-    """BOM 아이템을 트리 구조로 빌드 (joinedload로 N+1 방지)"""
+def build_recursive_tree(part_id: int, bom_type: str, db: Session, level: int = 1, version: str = None, visited=None):
+    """재귀적 BOM 트리 빌드 - 각 부품의 자체 BOM을 찾아서 확장"""
+    if visited is None:
+        visited = set()
+    if part_id in visited:  # 순환 참조 방지
+        return []
+    visited.add(part_id)
+
+    # 해당 part의 BOM Header 찾기 (같은 bom_type)
+    q = db.query(BOMHeader).filter(
+        BOMHeader.part_id == part_id,
+        BOMHeader.bom_type == bom_type,
+    )
+    if version:
+        bom_header = q.filter(BOMHeader.version == version).first()
+    else:
+        all_boms = q.all()
+        if not all_boms:
+            return []
+        bom_header = max(all_boms, key=lambda h: float(h.version) if h.version else 0)
+
+    if not bom_header:
+        return []
+
     items = (
         db.query(BOMItem)
-        .filter(BOMItem.bom_id == bom_id)
+        .filter(BOMItem.bom_id == bom_header.id)
         .options(
             joinedload(BOMItem.child_part),
             joinedload(BOMItem.substitutes).joinedload(BOMSubstitute.substitute_part),
@@ -31,26 +53,36 @@ def build_bom_tree(bom_id: int, db: Session):
         .all()
     )
 
-    root_items = [i for i in items if i.parent_item_id is None]
+    result = []
+    for item in items:
+        # 자식 부품의 자체 BOM이 있는지 재귀 확인
+        children = build_recursive_tree(item.child_part_id, bom_type, db, level + 1, visited=set(visited))
 
-    def build_node(item, level=1):
-        children = sorted(
-            [i for i in items if i.parent_item_id == item.id],
-            key=lambda x: x.seq_no,
-        )
-        return {
+        # 자식 부품의 BOM Header 정보 (버전 표시용)
+        child_bom = None
+        if children:
+            child_bom_q = db.query(BOMHeader).filter(
+                BOMHeader.part_id == item.child_part_id,
+                BOMHeader.bom_type == bom_type,
+            ).all()
+            if child_bom_q:
+                child_bom = max(child_bom_q, key=lambda h: float(h.version) if h.version else 0)
+
+        result.append({
             "item": item,
             "level": level,
-            "children": [build_node(c, level + 1) for c in children],
-        }
+            "children": children,
+            "child_bom_header": child_bom,  # 자식 부품의 BOM 헤더 (버전 표시용)
+        })
 
-    return [build_node(i) for i in root_items]
+    return result
 
 
 def node_to_dict(node):
     """트리 노드를 JSON 직렬화 가능한 dict로 변환"""
     item = node["item"]
     part = item.child_part
+    child_bom = node.get("child_bom_header")
     return {
         "id": item.id,
         "part_number": part.part_number if part else "",
@@ -62,6 +94,8 @@ def node_to_dict(node):
         "seq_no": item.seq_no,
         "remark": item.remark or "",
         "level": node["level"],
+        "child_part_id": item.child_part_id,
+        "child_bom_version": child_bom.version if child_bom else None,
         "children": [node_to_dict(c) for c in node["children"]],
         "substitutes": [
             {
@@ -200,7 +234,8 @@ def bom_detail(
             # 버전 미지정 → 최신 버전
             bom_header = all_versions[0]
 
-    tree = build_bom_tree(bom_header.id, db) if bom_header else []
+    # 재귀적 BOM 트리 빌드
+    tree = build_recursive_tree(part_id, bom_type, db, version=bom_header.version if bom_header else None) if bom_header else []
 
     # 현재 part에 존재하는 BOM 타입 목록 (탭 표시용)
     existing_bom_types = [
@@ -236,46 +271,8 @@ def api_bom_tree(bom_id: int, db: Session = Depends(get_db)):
     if not bom_header:
         raise HTTPException(status_code=404, detail="BOM을 찾을 수 없습니다.")
 
-    tree = build_bom_tree(bom_id, db)
+    tree = build_recursive_tree(bom_header.part_id, bom_header.bom_type, db, version=bom_header.version)
     return JSONResponse(content=[node_to_dict(n) for n in tree])
-
-
-# ── 헬퍼: 트리를 flat 리스트로 변환 (편집용) ────────────────────────────────
-
-def node_to_flat(node, flat_list, parent_idx):
-    """트리 노드를 편집용 flat dict로 변환하여 flat_list에 추가"""
-    item = node["item"]
-    part = item.child_part
-    idx = len(flat_list)
-    entry = {
-        "id": item.id,
-        "child_part_id": item.child_part_id,
-        "part_number": part.part_number if part else "",
-        "description": part.description if part else "",
-        "spec": part.spec if part else "",
-        "category": part.category or "" if part else "",
-        "unit": item.unit or "EA",
-        "quantity": item.quantity,
-        "seq_no": item.seq_no,
-        "effective_start": item.effective_start or "",
-        "effective_end": item.effective_end or "9999-12-31",
-        "remark": item.remark or "",
-        "level": node["level"],
-        "parent_idx": parent_idx,
-        "substitutes": [
-            {
-                "part_id": s.substitute_part_id,
-                "part_number": s.substitute_part.part_number if s.substitute_part else "",
-                "description": s.substitute_part.description if s.substitute_part else "",
-                "priority": s.priority,
-                "remark": s.remark or "",
-            }
-            for s in item.substitutes
-        ],
-    }
-    flat_list.append(entry)
-    for child in node["children"]:
-        node_to_flat(child, flat_list, idx)
 
 
 # ── 4. GET /bom/edit/{part_id} ────────────────────────────────────────────────
@@ -301,7 +298,6 @@ def bom_edit(
     if version is not None:
         bom_header = q.filter(BOMHeader.version == str(version)).first()
     else:
-        # version을 float으로 변환하여 최신 버전 선택
         all_boms = q.all()
         def _edit_ver_key(h):
             try:
@@ -322,10 +318,52 @@ def bom_edit(
         db.commit()
         db.refresh(bom_header)
 
-    tree = build_bom_tree(bom_header.id, db)
+    # 직접 자식 아이템만 flat list로 제공
+    items = (
+        db.query(BOMItem)
+        .filter(BOMItem.bom_id == bom_header.id)
+        .options(
+            joinedload(BOMItem.child_part),
+            joinedload(BOMItem.substitutes).joinedload(BOMSubstitute.substitute_part),
+        )
+        .order_by(BOMItem.seq_no)
+        .all()
+    )
+
     flat_list = []
-    for node in tree:
-        node_to_flat(node, flat_list, None)
+    for item in items:
+        part_obj = item.child_part
+        # 자식 부품이 자체 BOM을 가지고 있는지 확인
+        has_own_bom = db.query(BOMHeader).filter(
+            BOMHeader.part_id == item.child_part_id,
+            BOMHeader.bom_type == bom_type,
+        ).first() is not None
+
+        flat_list.append({
+            "id": item.id,
+            "child_part_id": item.child_part_id,
+            "part_number": part_obj.part_number if part_obj else "",
+            "description": part_obj.description if part_obj else "",
+            "spec": part_obj.spec if part_obj else "",
+            "category": part_obj.category or "" if part_obj else "",
+            "unit": item.unit or "EA",
+            "quantity": item.quantity,
+            "seq_no": item.seq_no,
+            "effective_start": item.effective_start or "",
+            "effective_end": item.effective_end or "9999-12-31",
+            "remark": item.remark or "",
+            "has_own_bom": has_own_bom,
+            "substitutes": [
+                {
+                    "part_id": s.substitute_part_id,
+                    "part_number": s.substitute_part.part_number if s.substitute_part else "",
+                    "description": s.substitute_part.description if s.substitute_part else "",
+                    "priority": s.priority,
+                    "remark": s.remark or "",
+                }
+                for s in item.substitutes
+            ],
+        })
 
     import json
     tree_data_json = json.dumps(flat_list, ensure_ascii=False)
@@ -384,23 +422,14 @@ async def bom_save(part_id: int, request: Request, db: Session = Depends(get_db)
     db.query(BOMItem).filter(BOMItem.bom_id == bom_header.id).delete(synchronize_session=False)
     db.flush()
 
-    # 새 아이템 생성 (idx 기반으로 parent_item_id 매핑)
-    # items_data: [{child_part_id, parent_idx, quantity, unit, seq_no, remark, substitutes: [...]}]
-    created_items = {}  # idx → BOMItem
-
+    # 새 아이템 생성 (flat — parent_idx 없음)
     for idx, item_data in enumerate(items_data):
         child_part_id = item_data.get("child_part_id")
         if not child_part_id:
             continue
 
-        parent_idx = item_data.get("parent_idx")
-        parent_item_id = None
-        if parent_idx is not None and parent_idx in created_items:
-            parent_item_id = created_items[parent_idx].id
-
         new_item = BOMItem(
             bom_id=bom_header.id,
-            parent_item_id=parent_item_id,
             child_part_id=child_part_id,
             quantity=float(item_data.get("quantity", 1)),
             unit=item_data.get("unit", "EA") or "EA",
@@ -411,7 +440,6 @@ async def bom_save(part_id: int, request: Request, db: Session = Depends(get_db)
         )
         db.add(new_item)
         db.flush()
-        created_items[idx] = new_item
 
         # 대치품 생성
         for sub_data in item_data.get("substitutes", []):
@@ -451,14 +479,12 @@ async def bom_upload_excel(part_id: int, file: UploadFile = File(...), db: Sessi
     if not rows:
         return JSONResponse(content={"success": 0, "fail": 0, "errors": [], "items": []})
 
-    # 헤더 행 파악 (Level, 부품번호, 수량, 단위, 비고)
+    # 헤더 행 파악 (부품번호, 수량, 단위, 비고)
     header_row = [str(c).strip() if c else "" for c in rows[0]]
     col_map = {}
     for i, h in enumerate(header_row):
         hl = h.lower()
-        if "level" in hl or "lv" in hl or "레벨" in hl:
-            col_map["level"] = i
-        elif "부품번호" in hl or "part" in hl or "partno" in hl:
+        if "부품번호" in hl or "part" in hl or "partno" in hl:
             col_map["part_number"] = i
         elif "수량" in hl or "qty" in hl or "quantity" in hl:
             col_map["quantity"] = i
@@ -467,17 +493,15 @@ async def bom_upload_excel(part_id: int, file: UploadFile = File(...), db: Sessi
         elif "비고" in hl or "remark" in hl:
             col_map["remark"] = i
 
-    # 기본 컬럼 순서 fallback: Level | 부품번호 | 수량 | 단위 | 비고
-    if "level" not in col_map:
-        col_map["level"] = 0
+    # 기본 컬럼 순서 fallback: 부품번호 | 수량 | 단위 | 비고
     if "part_number" not in col_map:
-        col_map["part_number"] = 1
+        col_map["part_number"] = 0
     if "quantity" not in col_map:
-        col_map["quantity"] = 2
+        col_map["quantity"] = 1
     if "unit" not in col_map:
-        col_map["unit"] = 3
+        col_map["unit"] = 2
     if "remark" not in col_map:
-        col_map["remark"] = 4
+        col_map["remark"] = 3
 
     success_count = 0
     fail_count = 0
@@ -485,7 +509,6 @@ async def bom_upload_excel(part_id: int, file: UploadFile = File(...), db: Sessi
     items = []
 
     data_rows = rows[1:]
-    level_stack = {}  # level → idx in items
 
     for row_idx, row in enumerate(data_rows, start=2):
         def get_cell(key):
@@ -494,7 +517,6 @@ async def bom_upload_excel(part_id: int, file: UploadFile = File(...), db: Sessi
                 return None
             return row[ci]
 
-        raw_level = get_cell("level")
         raw_pn = get_cell("part_number")
 
         if not raw_pn:
@@ -503,11 +525,6 @@ async def bom_upload_excel(part_id: int, file: UploadFile = File(...), db: Sessi
         part_number = str(raw_pn).strip()
         if not part_number:
             continue
-
-        try:
-            level = int(float(str(raw_level).strip())) if raw_level else 1
-        except Exception:
-            level = 1
 
         try:
             qty = float(str(get_cell("quantity")).strip()) if get_cell("quantity") else 1.0
@@ -524,18 +541,7 @@ async def bom_upload_excel(part_id: int, file: UploadFile = File(...), db: Sessi
             errors.append(f"행 {row_idx}: 부품번호 '{part_number}' 없음")
             continue
 
-        # parent_idx 계산
-        parent_idx = None
-        if level > 1:
-            parent_level = level - 1
-            parent_idx = level_stack.get(parent_level)
-
         current_idx = len(items)
-        level_stack[level] = current_idx
-        # 현재 레벨보다 깊은 스택 항목 제거
-        for lv in list(level_stack.keys()):
-            if lv >= level + 1:
-                del level_stack[lv]
 
         items.append({
             "child_part_id": part_obj.id,
@@ -547,8 +553,7 @@ async def bom_upload_excel(part_id: int, file: UploadFile = File(...), db: Sessi
             "quantity": qty,
             "seq_no": current_idx,
             "remark": remark,
-            "level": level,
-            "parent_idx": parent_idx,
+            "has_own_bom": False,
             "substitutes": [],
         })
         success_count += 1
@@ -601,16 +606,6 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
         return JSONResponse(status_code=404, content={"error": "원본 BOM을 찾을 수 없습니다."})
 
     # 최신 버전 번호 조회 (Iteration 증가)
-    all_boms = db.query(BOMHeader).filter(
-        BOMHeader.part_id == part_id,
-        BOMHeader.bom_type == bom_type,
-    ).all()
-    def _ver_f(h):
-        try:
-            return float(h.version)
-        except (ValueError, TypeError):
-            return 0.0
-    latest = max(all_boms, key=_ver_f) if all_boms else source_bom
     parts_v = source_bom.version.split(".")
     major = parts_v[0]
     iteration = int(parts_v[1]) + 1 if len(parts_v) > 1 else 1
@@ -627,7 +622,7 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
     db.add(new_bom)
     db.flush()
 
-    # 기존 아이템 트리를 복사 (parent 관계 유지)
+    # 기존 아이템 flat 복사
     source_items = (
         db.query(BOMItem)
         .filter(BOMItem.bom_id == source_bom.id)
@@ -636,12 +631,9 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
         .all()
     )
 
-    old_to_new_id = {}  # 구 item.id → 새 item.id
-
-    def copy_item(old_item, new_parent_id):
+    for old_item in source_items:
         new_item = BOMItem(
             bom_id=new_bom.id,
-            parent_item_id=new_parent_id,
             child_part_id=old_item.child_part_id,
             quantity=old_item.quantity,
             unit=old_item.unit,
@@ -652,7 +644,6 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
         )
         db.add(new_item)
         db.flush()
-        old_to_new_id[old_item.id] = new_item.id
 
         for sub in old_item.substitutes:
             new_sub = BOMSubstitute(
@@ -662,14 +653,6 @@ async def bom_new_version(part_id: int, request: Request, db: Session = Depends(
                 remark=sub.remark,
             )
             db.add(new_sub)
-
-        children = [i for i in source_items if i.parent_item_id == old_item.id]
-        for child in sorted(children, key=lambda x: x.seq_no):
-            copy_item(child, new_item.id)
-
-    root_items = [i for i in source_items if i.parent_item_id is None]
-    for root in sorted(root_items, key=lambda x: x.seq_no):
-        copy_item(root, None)
 
     db.commit()
     return JSONResponse(content={"ok": True, "version": new_version_no})
@@ -731,27 +714,30 @@ async def bom_checkin(part_id: int, request: Request, db: Session = Depends(get_
     db.add(new_bom)
     db.flush()
 
-    # 기존 아이템 복사
+    # 기존 아이템 flat 복사
     source_items = db.query(BOMItem).filter(BOMItem.bom_id == bom.id)\
         .options(joinedload(BOMItem.substitutes)).order_by(BOMItem.seq_no).all()
 
-    def _copy_items_checkin(old_item, new_parent_id):
+    for old_item in source_items:
         new_item = BOMItem(
-            bom_id=new_bom.id, parent_item_id=new_parent_id,
-            child_part_id=old_item.child_part_id, quantity=old_item.quantity,
-            unit=old_item.unit, seq_no=old_item.seq_no,
-            effective_start=old_item.effective_start, effective_end=old_item.effective_end,
+            bom_id=new_bom.id,
+            child_part_id=old_item.child_part_id,
+            quantity=old_item.quantity,
+            unit=old_item.unit,
+            seq_no=old_item.seq_no,
+            effective_start=old_item.effective_start,
+            effective_end=old_item.effective_end,
             remark=old_item.remark,
         )
         db.add(new_item)
         db.flush()
         for sub in old_item.substitutes:
-            db.add(BOMSubstitute(bom_item_id=new_item.id, substitute_part_id=sub.substitute_part_id, priority=sub.priority, remark=sub.remark))
-        for child in sorted([i for i in source_items if i.parent_item_id == old_item.id], key=lambda x: x.seq_no):
-            _copy_items_checkin(child, new_item.id)
-
-    for root in sorted([i for i in source_items if i.parent_item_id is None], key=lambda x: x.seq_no):
-        _copy_items_checkin(root, None)
+            db.add(BOMSubstitute(
+                bom_item_id=new_item.id,
+                substitute_part_id=sub.substitute_part_id,
+                priority=sub.priority,
+                remark=sub.remark,
+            ))
 
     # 원본 BOM 상태 변경
     bom.checked_out = 0
@@ -792,23 +778,26 @@ async def bom_revise(part_id: int, request: Request, db: Session = Depends(get_d
     source_items = db.query(BOMItem).filter(BOMItem.bom_id == bom.id)\
         .options(joinedload(BOMItem.substitutes)).order_by(BOMItem.seq_no).all()
 
-    def _copy_items_revise(old_item, new_parent_id):
+    for old_item in source_items:
         new_item = BOMItem(
-            bom_id=new_bom.id, parent_item_id=new_parent_id,
-            child_part_id=old_item.child_part_id, quantity=old_item.quantity,
-            unit=old_item.unit, seq_no=old_item.seq_no,
-            effective_start=old_item.effective_start, effective_end=old_item.effective_end,
+            bom_id=new_bom.id,
+            child_part_id=old_item.child_part_id,
+            quantity=old_item.quantity,
+            unit=old_item.unit,
+            seq_no=old_item.seq_no,
+            effective_start=old_item.effective_start,
+            effective_end=old_item.effective_end,
             remark=old_item.remark,
         )
         db.add(new_item)
         db.flush()
         for sub in old_item.substitutes:
-            db.add(BOMSubstitute(bom_item_id=new_item.id, substitute_part_id=sub.substitute_part_id, priority=sub.priority, remark=sub.remark))
-        for child in sorted([i for i in source_items if i.parent_item_id == old_item.id], key=lambda x: x.seq_no):
-            _copy_items_revise(child, new_item.id)
-
-    for root in sorted([i for i in source_items if i.parent_item_id is None], key=lambda x: x.seq_no):
-        _copy_items_revise(root, None)
+            db.add(BOMSubstitute(
+                bom_item_id=new_item.id,
+                substitute_part_id=sub.substitute_part_id,
+                priority=sub.priority,
+                remark=sub.remark,
+            ))
 
     db.commit()
     return JSONResponse(content={"ok": True, "version": new_version})

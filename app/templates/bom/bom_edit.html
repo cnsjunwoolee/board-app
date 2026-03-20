@@ -88,32 +88,6 @@
     border-bottom: 1px solid var(--lg-brand);
   }
 
-  /* 레벨 배지 */
-  .level-badge {
-    display: inline-block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #fff;
-    background: var(--lg-gray-500);
-    border-radius: 3px;
-    padding: 0 5px;
-    line-height: 1.6;
-    min-width: 18px;
-    text-align: center;
-  }
-  .level-badge.lv1 { background: var(--lg-brand); }
-  .level-badge.lv2 { background: #1976d2; }
-  .level-badge.lv3 { background: #388e3c; }
-  .level-badge.lv4 { background: #f57c00; }
-
-  /* 부품번호 셀 */
-  .pn-cell {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .pn-indent { flex-shrink: 0; }
-
   /* 대치품 버튼 */
   .sub-badge {
     cursor: pointer;
@@ -141,32 +115,11 @@
     cursor: pointer;
     font-size: 0.85rem;
     transition: all 0.15s;
+    text-decoration: none;
   }
   .action-icon:hover { border-color: var(--lg-brand); color: var(--lg-brand); background: var(--lg-brand-hover, #fef0f3); }
   .action-icon.del { color: #dc3545; border-color: #fcc; }
   .action-icon.del:hover { background: #dc3545; color: #fff; border-color: #dc3545; }
-
-  /* 트리 토글 */
-  .tree-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    font-size: 0.65rem;
-    color: var(--lg-gray-500);
-    border-radius: 3px;
-    flex-shrink: 0;
-    transition: transform 0.15s;
-    user-select: none;
-  }
-  .tree-toggle:hover { color: var(--lg-brand); background: var(--lg-brand-hover, #fef0f3); }
-  .tree-toggle.collapsed { transform: rotate(-90deg); }
-  tr.tree-hidden { display: none; }
-
-  /* 행 선택 */
-  tr.row-selected td { background: #e3f2fd !important; }
 
   /* 하이라이트 (BOM 내 검색) */
   tr.search-highlight td { background: #fffde7 !important; }
@@ -204,7 +157,7 @@
       <small class="text-muted">{{ part.description }} &nbsp;|&nbsp; {{ bom_type }} v{{ bom.version if bom else 1 }}</small>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-      <button class="btn btn-sm btn-outline-secondary" onclick="addRootItem()" title="자재추가"><i class="bi bi-plus-circle"></i> 자재추가</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="addItem()" title="자재추가"><i class="bi bi-plus-circle"></i> 자재추가</button>
       <button class="btn btn-sm btn-outline-warning" onclick="showSearchModal()" title="검색으로 추가"><i class="bi bi-search"></i> 검색추가</button>
       <button class="btn btn-sm btn-outline-info" onclick="showExcelUpload()" title="Excel 업로드"><i class="bi bi-file-earmark-excel"></i> Excel</button>
       <button class="btn btn-sm btn-outline-secondary" onclick="searchInBom()" title="BOM 내 검색"><i class="bi bi-funnel"></i> 검색</button>
@@ -236,7 +189,6 @@
     <button class="btn btn-sm btn-outline-success" onclick="checkIn()" title="Check-In"><i class="bi bi-box-arrow-in-down-left"></i> Check-In</button>
     <button class="btn btn-sm btn-outline-danger" onclick="revise()" title="Revise"><i class="bi bi-arrow-up-circle"></i> Revise</button>
     <span class="ms-auto text-muted" style="font-size:0.78rem;" id="itemCountLabel"></span>
-    <span class="text-primary" style="font-size:0.78rem; font-weight:600;" id="selectedLabel"></span>
   </div>
 </div>
 
@@ -247,7 +199,6 @@
       <thead class="table-light">
         <tr>
           <th style="width:28px;"></th>
-          <th style="width:32px;" class="text-center">Lv</th>
           <th style="min-width:140px;">부품번호</th>
           <th style="min-width:160px;">설명</th>
           <th style="min-width:120px;">Spec</th>
@@ -256,9 +207,10 @@
           <th style="width:85px">적용시작일</th>
           <th style="width:85px">적용종료일</th>
           <th style="width:80px;" class="text-center">분류</th>
+          <th style="width:40px;" class="text-center">BOM</th>
           <th style="width:70px;" class="text-center">대치품</th>
           <th style="min-width:110px;">비고</th>
-          <th style="width:100px;" class="text-center">작업</th>
+          <th style="width:50px;" class="text-center">작업</th>
         </tr>
       </thead>
       <tbody id="bomEditorBody">
@@ -287,9 +239,6 @@
           <input type="text" id="searchModalInput" class="form-control form-control-sm"
                  placeholder="부품번호 또는 설명 입력 후 Enter">
           <button class="btn btn-primary btn-sm" onclick="searchParts(document.getElementById('searchModalInput').value)">검색</button>
-        </div>
-        <div style="font-size:0.78rem; color:var(--lg-gray-500); margin-bottom:0.5rem;">
-          추가 위치: <span id="searchAddTarget" class="fw-semibold" style="color:var(--lg-brand);">루트 (최상위)</span>
         </div>
         <div class="table-responsive" style="max-height:320px; overflow-y:auto;">
           <table class="table table-bordered table-sm search-result-table" id="searchResultTable">
@@ -328,8 +277,8 @@
       <div class="modal-body">
         <div class="alert alert-info py-2" style="font-size:0.82rem;">
           <strong>Excel 형식 안내</strong><br>
-          1행: 헤더 (Level, 부품번호, 수량, 단위, 비고)<br>
-          2행~: 데이터 (Level 숫자로 계층 구조 표현)
+          1행: 헤더 (부품번호, 수량, 단위, 비고)<br>
+          2행~: 데이터 (직접 자식 자재만 입력)
         </div>
         <div class="mb-3">
           <label class="form-label" style="font-size:0.85rem;">파일 선택 (.xlsx)</label>
@@ -430,11 +379,9 @@
   // 데이터 모델
   // ════════════════════════════════════════════
   let bomItems = [];
-  const collapsedSet = new Set();  // 접힌 노드 인덱스
-  let selectedIdx = null;  // 선택된 행 인덱스
   // 구조: [{
   //   id, child_part_id, part_number, description, spec, category,
-  //   quantity, unit, seq_no, remark, level, parent_idx,
+  //   quantity, unit, seq_no, remark, has_own_bom,
   //   substitutes: [{part_id, part_number, description, priority, remark}]
   // }]
 
@@ -463,18 +410,8 @@
     emptyMsg.style.display = 'none';
     countLabel.textContent = '총 ' + bomItems.length + '개 자재';
 
-    // 자식 존재 여부 맵 구축
-    const hasChildrenMap = {};
-    bomItems.forEach(function(item, idx) {
-      if (idx + 1 < bomItems.length && bomItems[idx + 1].level > item.level) {
-        hasChildrenMap[idx] = true;
-      }
-    });
-
     let html = '';
     bomItems.forEach(function (item, idx) {
-      const lvClass = 'lv' + Math.min(item.level, 4);
-      const indent = (item.level - 1) * 18;
       const subCount = (item.substitutes || []).length;
       const subLabel = subCount > 0 ? '<i class="bi bi-arrow-left-right"></i> ' + subCount : '<i class="bi bi-arrow-left-right"></i>';
 
@@ -482,39 +419,21 @@
         return '<option value="' + u + '"' + (item.unit === u ? ' selected' : '') + '>' + u + '</option>';
       }).join('');
 
-      // 숨김 여부 및 선택 상태
-      const isHidden = isRowHidden(idx);
-      const classes = [];
-      if (isHidden) classes.push('tree-hidden');
-      if (idx === selectedIdx) classes.push('row-selected');
-      html += '<tr data-idx="' + idx + '" data-level="' + item.level + '"'
+      html += '<tr data-idx="' + idx + '"'
             + ' draggable="true" ondragstart="onDragStart(event,' + idx + ')"'
             + ' ondragover="onDragOver(event,' + idx + ')" ondrop="onDrop(event,' + idx + ')"'
             + ' ondragleave="onDragLeave(event)"'
-            + ' onclick="selectRow(event,' + idx + ')"'
-            + (classes.length ? ' class="' + classes.join(' ') + '"' : '') + '>';
+            + '>';
 
       // 드래그 핸들
       html += '<td class="text-center"><span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
 
-      // 레벨
-      html += '<td class="text-center"><span class="level-badge ' + lvClass + '">' + item.level + '</span></td>';
-
-      // 부품번호 (트리 토글 포함)
-      const hasKids = hasChildrenMap[idx];
-      const isCollapsed = collapsedSet.has(idx);
-      const toggleHtml = hasKids
-        ? '<span class="tree-toggle' + (isCollapsed ? ' collapsed' : '') + '" onclick="toggleTreeNode(' + idx + ')" title="접기/펼치기"><i class="bi bi-caret-down-fill"></i></span>'
-        : '<span style="width:16px; display:inline-block; flex-shrink:0;"></span>';
-
-      html += '<td><div class="pn-cell">'
-            + '<span class="pn-indent" style="width:' + indent + 'px; flex-shrink:0;"></span>'
-            + toggleHtml
-            + '<input type="text" class="cell-input pn-input" data-idx="' + idx + '"'
+      // 부품번호
+      html += '<td><input type="text" class="cell-input pn-input" data-idx="' + idx + '"'
             + ' value="' + esc(item.part_number) + '" placeholder="부품번호"'
             + ' onblur="onPartNumberBlur(this,' + idx + ')"'
             + ' onkeydown="onPartNumberKeydown(event,this,' + idx + ')">'
-            + '</div></td>';
+            + '</td>';
 
       // 설명
       html += '<td><input type="text" class="cell-input" data-field="description" data-idx="' + idx + '"'
@@ -550,6 +469,15 @@
       html += '<td class="text-center"><span style="font-size:0.75rem; color:var(--lg-gray-500);">'
             + esc(item.category || '') + '</span></td>';
 
+      // BOM 링크 (자체 BOM 보유 여부)
+      html += '<td class="text-center">';
+      if (item.has_own_bom) {
+        html += '<a href="/bom/edit/' + item.child_part_id + '?bom_type=' + BOM_TYPE + (IS_FRAME ? '&frame=1' : '') + '" class="action-icon" title="하위 BOM 편집" onclick="event.stopPropagation();"><i class="bi bi-diagram-3"></i></a>';
+      } else {
+        html += '<span class="text-muted" style="font-size:0.75rem;">-</span>';
+      }
+      html += '</td>';
+
       // 대치품
       html += '<td class="text-center"><span class="sub-badge" onclick="openSubstituteModal(' + idx + ')">'
             + subLabel + '</span></td>';
@@ -559,10 +487,8 @@
             + ' value="' + esc(item.remark) + '" placeholder=""'
             + ' oninput="onFieldInput(this,' + idx + ',\'remark\',false)"></td>';
 
-      // 작업 (아이콘)
+      // 작업 (삭제)
       html += '<td class="text-center">'
-            + '<span class="action-icon" onclick="addChildItem(' + idx + ')" title="하위 자재 추가"><i class="bi bi-node-plus"></i></span> '
-            + '<span class="action-icon" onclick="showSearchModal(' + idx + ')" title="검색으로 하위 추가"><i class="bi bi-search"></i></span> '
             + '<span class="action-icon del" onclick="removeItem(' + idx + ')" title="삭제"><i class="bi bi-trash3"></i></span>'
             + '</td>';
 
@@ -619,50 +545,21 @@
         if (!bomItems[idx].unit || bomItems[idx].unit === 'EA') {
           bomItems[idx].unit = data.unit || 'EA';
         }
+        // has_own_bom은 재확인하지 않음 (저장 후 갱신됨)
         renderBomTable();
       })
       .catch(function(){ /* 무시 */ });
   }
 
   // ════════════════════════════════════════════
-  // 행 선택
-  // ════════════════════════════════════════════
-  window.selectRow = function(e, idx) {
-    // input/select/button 클릭 시에는 선택 변경하지 않음
-    const tag = e.target.tagName.toLowerCase();
-    if (tag === 'input' || tag === 'select' || tag === 'button' || e.target.closest('.action-icon') || e.target.closest('.tree-toggle') || e.target.closest('.sub-badge') || e.target.closest('.drag-handle')) return;
-    selectedIdx = (selectedIdx === idx) ? null : idx;
-    document.querySelectorAll('#bomEditorBody tr').forEach(function(r) {
-      r.classList.toggle('row-selected', parseInt(r.dataset.idx) === selectedIdx);
-    });
-    updateSelectedLabel();
-  };
-
-  function updateSelectedLabel() {
-    const label = document.getElementById('selectedLabel');
-    if (selectedIdx !== null && bomItems[selectedIdx]) {
-      const pn = bomItems[selectedIdx].part_number || '(미입력)';
-      label.innerHTML = '<i class="bi bi-cursor-fill"></i> 선택: ' + esc(pn);
-    } else {
-      label.textContent = '';
-    }
-  }
-
-  // ════════════════════════════════════════════
   // 자재 추가
   // ════════════════════════════════════════════
-  window.addRootItem = function() {
-    // 선택된 행이 있으면 그 하위에, 없으면 루트에 추가
-    if (selectedIdx !== null && bomItems[selectedIdx]) {
-      addChildItem(selectedIdx);
-      return;
-    }
+  window.addItem = function() {
     bomItems.push({
       id: null, child_part_id: null, part_number: '', description: '',
       spec: '', category: '', quantity: 1, unit: 'EA',
       seq_no: bomItems.length, effective_start: '', effective_end: '9999-12-31',
-      remark: '', level: 1, parent_idx: null,
-      substitutes: []
+      remark: '', has_own_bom: false, substitutes: []
     });
     renderBomTable();
     setTimeout(function() {
@@ -671,94 +568,14 @@
     }, 50);
   };
 
-  window.addChildItem = function(parentIdx) {
-    const parent = bomItems[parentIdx];
-    if (!parent) return;
-    const childLevel = parent.level + 1;
-
-    // parentIdx 이후 자식들의 끝 위치 찾기
-    let insertPos = parentIdx + 1;
-    while (insertPos < bomItems.length && bomItems[insertPos].level > parent.level) {
-      insertPos++;
-    }
-
-    // 삽입 위치 이후 항목들의 parent_idx 보정
-    const newItem = {
-      id: null, child_part_id: null, part_number: '', description: '',
-      spec: '', category: '', quantity: 1, unit: 'EA',
-      seq_no: insertPos, effective_start: '', effective_end: '9999-12-31',
-      remark: '', level: childLevel, parent_idx: parentIdx,
-      substitutes: []
-    };
-
-    bomItems.splice(insertPos, 0, newItem);
-    // 삽입 후 idx 보정
-    fixParentIdxAfterInsert(insertPos);
-    renderBomTable();
-    setTimeout(function() {
-      const inputs = document.querySelectorAll('.pn-input');
-      if (inputs[insertPos]) inputs[insertPos].focus();
-    }, 50);
-  };
-
-  function fixParentIdxAfterInsert(insertPos) {
-    // insertPos 이후 항목들 중 parent_idx >= insertPos인 것을 +1
-    for (let i = insertPos + 1; i < bomItems.length; i++) {
-      if (bomItems[i].parent_idx !== null && bomItems[i].parent_idx >= insertPos) {
-        bomItems[i].parent_idx += 1;
-      }
-    }
-  }
-
   // ════════════════════════════════════════════
   // 자재 삭제
   // ════════════════════════════════════════════
   window.removeItem = function(idx) {
-    if (!confirm('선택한 자재와 하위 자재를 모두 삭제합니다. 계속하시겠습니까?')) return;
-
-    // 삭제할 인덱스 수집 (해당 항목 + 하위)
-    const toRemove = collectDescendants(idx);
-    toRemove.sort(function(a, b) { return b - a; }); // 뒤에서부터 삭제
-    toRemove.forEach(function(i) { bomItems.splice(i, 1); });
-
-    // parent_idx 재정규화
-    selectedIdx = null;
-    updateSelectedLabel();
-    rebuildParentIdx();
+    if (!confirm('선택한 자재를 삭제합니다. 계속하시겠습니까?')) return;
+    bomItems.splice(idx, 1);
     renderBomTable();
   };
-
-  function collectDescendants(idx) {
-    const result = [idx];
-    const targetLevel = bomItems[idx] ? bomItems[idx].level : 0;
-    for (let i = idx + 1; i < bomItems.length; i++) {
-      if (bomItems[i].level > targetLevel) {
-        result.push(i);
-      } else {
-        break;
-      }
-    }
-    return result;
-  }
-
-  // 전체 parent_idx 재계산 (level 기반)
-  function rebuildParentIdx() {
-    // 각 항목의 parent_idx를 level 스택으로 재계산
-    const levelStack = {};
-    bomItems.forEach(function(item, i) {
-      const lv = item.level;
-      if (lv <= 1) {
-        item.parent_idx = null;
-      } else {
-        item.parent_idx = levelStack[lv - 1] !== undefined ? levelStack[lv - 1] : null;
-      }
-      levelStack[lv] = i;
-      // 현재보다 깊은 레벨 스택 제거
-      Object.keys(levelStack).forEach(function(k) {
-        if (parseInt(k) > lv) delete levelStack[k];
-      });
-    });
-  }
 
   // ════════════════════════════════════════════
   // Drag & Drop (HTML5 drag API)
@@ -796,41 +613,15 @@
       return;
     }
 
-    // 같은 레벨인 경우에만 이동 허용
-    const srcItem = bomItems[dragSrcIdx];
-    const tgtItem = bomItems[targetIdx];
-    if (!srcItem || !tgtItem || srcItem.level !== tgtItem.level) {
-      dragSrcIdx = null;
-      return;
-    }
-
-    // 이동할 항목(+자손) 추출
-    const srcGroup = collectDescendants(dragSrcIdx);
-    const movedItems = srcGroup.map(function(i) { return bomItems[i]; });
-
-    // 원래 위치에서 제거
-    srcGroup.sort(function(a,b){return b-a;}).forEach(function(i){
-      bomItems.splice(i, 1);
-    });
-
-    // 삽입 위치 재계산 (제거 후 targetIdx 보정)
+    // 단일 항목 이동
+    const movedItem = bomItems.splice(dragSrcIdx, 1)[0];
     let newTarget = targetIdx;
     if (dragSrcIdx < targetIdx) {
-      newTarget -= srcGroup.length;
+      newTarget = targetIdx - 1;
     }
     newTarget = Math.max(0, Math.min(newTarget, bomItems.length));
+    bomItems.splice(newTarget, 0, movedItem);
 
-    // 목적지 이후 자손 뒤에 삽입
-    let insertAt = newTarget;
-    while (insertAt < bomItems.length && bomItems[insertAt].level > tgtItem.level) {
-      insertAt++;
-    }
-
-    movedItems.forEach(function(item, i) {
-      bomItems.splice(insertAt + i, 0, item);
-    });
-
-    rebuildParentIdx();
     renderBomTable();
     dragSrcIdx = null;
   };
@@ -909,14 +700,9 @@
       resultDiv.innerHTML = html;
 
       if (data.items && data.items.length) {
-        // 기존 bomItems에 추가
-        const offset = bomItems.length;
+        // flat으로 단순 추가
         data.items.forEach(function(item) {
-          const newItem = Object.assign({}, item);
-          if (newItem.parent_idx !== null && newItem.parent_idx !== undefined) {
-            newItem.parent_idx += offset;
-          }
-          bomItems.push(newItem);
+          bomItems.push(Object.assign({}, item));
         });
         renderBomTable();
       }
@@ -949,7 +735,6 @@
       items: bomItems.map(function(item, idx) {
         return {
           child_part_id: item.child_part_id,
-          parent_idx: item.parent_idx,
           quantity: parseFloat(item.quantity) || 1,
           unit: item.unit || 'EA',
           seq_no: idx,
@@ -991,16 +776,7 @@
   // ════════════════════════════════════════════
   // 자재 검색 모달
   // ════════════════════════════════════════════
-  let searchTargetIdx = null; // null이면 루트에 추가
-
-  window.showSearchModal = function(parentIdx) {
-    searchTargetIdx = (parentIdx !== undefined) ? parentIdx : null;
-    const label = document.getElementById('searchAddTarget');
-    if (searchTargetIdx !== null && bomItems[searchTargetIdx]) {
-      label.textContent = bomItems[searchTargetIdx].part_number + ' 하위';
-    } else {
-      label.textContent = '루트 (최상위)';
-    }
+  window.showSearchModal = function() {
     document.getElementById('searchModalInput').value = '';
     document.getElementById('searchResultBody').innerHTML =
       '<tr><td colspan="5" class="text-center text-muted py-3">검색어를 입력하세요.</td></tr>';
@@ -1046,10 +822,6 @@
   };
 
   window.addPartFromSearch = function(partData) {
-    const level = (searchTargetIdx !== null && bomItems[searchTargetIdx])
-                  ? bomItems[searchTargetIdx].level + 1
-                  : 1;
-
     const newItem = {
       id: null,
       child_part_id: partData.id,
@@ -1063,23 +835,11 @@
       effective_start: '',
       effective_end: '9999-12-31',
       remark: '',
-      level: level,
-      parent_idx: searchTargetIdx,
+      has_own_bom: false,
       substitutes: []
     };
 
-    if (searchTargetIdx !== null) {
-      // 부모 항목 바로 아래 자손들 끝에 삽입
-      let insertPos = searchTargetIdx + 1;
-      while (insertPos < bomItems.length && bomItems[insertPos].level > bomItems[searchTargetIdx].level) {
-        insertPos++;
-      }
-      bomItems.splice(insertPos, 0, newItem);
-      fixParentIdxAfterInsert(insertPos);
-    } else {
-      bomItems.push(newItem);
-    }
-
+    bomItems.push(newItem);
     renderBomTable();
 
     // 모달 닫기
@@ -1278,7 +1038,6 @@
       items: bomItems.map(function(item, idx) {
         return {
           child_part_id: item.child_part_id,
-          parent_idx: item.parent_idx,
           quantity: parseFloat(item.quantity) || 1,
           unit: item.unit || 'EA',
           seq_no: idx,
@@ -1298,34 +1057,6 @@
       credentials: 'same-origin'
     });
   }
-
-  // ════════════════════════════════════════════
-  // 트리 접기/펼치기
-  // ════════════════════════════════════════════
-  function isRowHidden(idx) {
-    if (idx === 0) return false;
-    const myLevel = bomItems[idx].level;
-    // 위쪽으로 올라가며 직계 조상 찾기
-    let checkLevel = myLevel;
-    for (let i = idx - 1; i >= 0; i--) {
-      if (bomItems[i].level < checkLevel) {
-        // i는 조상
-        if (collapsedSet.has(i)) return true;
-        checkLevel = bomItems[i].level;
-        if (checkLevel <= 1) break;
-      }
-    }
-    return false;
-  }
-
-  window.toggleTreeNode = function(idx) {
-    if (collapsedSet.has(idx)) {
-      collapsedSet.delete(idx);
-    } else {
-      collapsedSet.add(idx);
-    }
-    renderBomTable();
-  };
 
   // ════════════════════════════════════════════
   // 초기 렌더링

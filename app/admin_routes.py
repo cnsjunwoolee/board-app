@@ -324,35 +324,53 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
     # ── BOM 생성 헬퍼 ──────────────────────────────────────────────────────────
 
     def create_bom_for_model(model_part, semi_parts, mech_parts, elec_parts, misc_parts, bom_type='E-BOM'):
-        bom = BOMHeader(
+        # 1. 모델의 BOM Header (직접 자식 = 반제품들)
+        model_bom = BOMHeader(
             part_id=model_part.id,
             bom_type=bom_type,
-            version=1,
+            version="1.0",
             effective_date='2026-01-01',
             status='승인',
         )
-        db.add(bom)
+        db.add(model_bom)
         db.flush()
 
-        # Level 2: 반제품 3~5개
         num_l2 = random.randint(3, 5)
         used_semi = random.sample(semi_parts, min(num_l2, len(semi_parts)))
         seq = 0
 
         for semi in used_semi:
             seq += 10
-            l2_item = BOMItem(
-                bom_id=bom.id,
-                parent_item_id=None,
+            db.add(BOMItem(
+                bom_id=model_bom.id,
                 child_part_id=semi.id,
                 quantity=random.randint(1, 3),
                 unit='EA',
                 seq_no=seq,
+            ))
+        db.flush()
+
+        # 2. 각 반제품의 자체 BOM Header (직접 자식 = 기구/회로자재)
+        for semi in used_semi:
+            # 이미 이 반제품에 해당 bom_type의 BOM이 있으면 건너뜀
+            existing = db.query(BOMHeader).filter(
+                BOMHeader.part_id == semi.id,
+                BOMHeader.bom_type == bom_type,
+            ).first()
+            if existing:
+                continue
+
+            semi_bom = BOMHeader(
+                part_id=semi.id,
+                bom_type=bom_type,
+                version="1.0",
+                effective_date='2026-01-01',
+                status='승인',
             )
-            db.add(l2_item)
+            db.add(semi_bom)
             db.flush()
 
-            # Level 3: 부품 5~10개
+            # Level 3 자재 (반제품의 직접 자식)
             num_l3 = random.randint(5, 10)
             combined = mech_parts + elec_parts
             l3_parts = random.sample(combined, min(num_l3, len(combined)))
@@ -360,69 +378,61 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
             for p3 in l3_parts:
                 l3_seq += 10
                 l3_item = BOMItem(
-                    bom_id=bom.id,
-                    parent_item_id=l2_item.id,
+                    bom_id=semi_bom.id,
                     child_part_id=p3.id,
                     quantity=random.choice([1, 1, 2, 2, 3, 4, 5, 10]),
                     unit='EA',
                     seq_no=l3_seq,
                 )
                 db.add(l3_item)
-                db.flush()
+            db.flush()
 
-                # Level 4: 2~5개 (50% 확률)
-                if random.random() < 0.5:
+            # Level 4: 일부 회로자재가 자체 BOM을 가짐 (30% 확률)
+            for p3 in l3_parts:
+                if random.random() < 0.3:
+                    existing_sub = db.query(BOMHeader).filter(
+                        BOMHeader.part_id == p3.id,
+                        BOMHeader.bom_type == bom_type,
+                    ).first()
+                    if existing_sub:
+                        continue
+                    sub_bom = BOMHeader(
+                        part_id=p3.id,
+                        bom_type=bom_type,
+                        version="1.0",
+                        effective_date='2026-01-01',
+                        status='승인',
+                    )
+                    db.add(sub_bom)
+                    db.flush()
                     num_l4 = random.randint(2, 5)
-                    l4_pool = elec_parts + mech_parts
-                    l4_parts = random.sample(l4_pool, min(num_l4, len(elec_parts)))
+                    l4_pool = elec_parts + misc_parts
+                    l4_parts = random.sample(l4_pool, min(num_l4, len(l4_pool)))
                     l4_seq = 0
                     for p4 in l4_parts:
                         l4_seq += 10
-                        l4_item = BOMItem(
-                            bom_id=bom.id,
-                            parent_item_id=l3_item.id,
+                        db.add(BOMItem(
+                            bom_id=sub_bom.id,
                             child_part_id=p4.id,
                             quantity=random.choice([1, 2, 3, 5, 10, 20]),
                             unit='EA',
                             seq_no=l4_seq,
-                        )
-                        db.add(l4_item)
-                        db.flush()
+                        ))
+                    db.flush()
 
-                        # Level 5: 1~3개 (30% 확률)
-                        if random.random() < 0.3:
-                            num_l5 = random.randint(1, 3)
-                            l5_parts = random.sample(misc_parts, min(num_l5, len(misc_parts)))
-                            l5_seq = 0
-                            for p5 in l5_parts:
-                                l5_seq += 10
-                                db.add(BOMItem(
-                                    bom_id=bom.id,
-                                    parent_item_id=l4_item.id,
-                                    child_part_id=p5.id,
-                                    quantity=random.choice([1, 2, 5, 10]),
-                                    unit='EA',
-                                    seq_no=l5_seq,
-                                ))
-
-        db.flush()
-
-        # 대치부품 추가 (Level 3 이하 아이템 중 20%에 대해, 최대 10개)
-        level3_items = db.query(BOMItem).filter(
-            BOMItem.bom_id == bom.id,
-            BOMItem.parent_item_id != None,
-        ).all()
-        sample_size = min(len(level3_items) // 5, 10)
-        if sample_size > 0:
-            for item in random.sample(level3_items, sample_size):
-                sub_part = random.choice(elec_parts + mech_parts)
-                if sub_part.id != item.child_part_id:
-                    db.add(BOMSubstitute(
-                        bom_item_id=item.id,
-                        substitute_part_id=sub_part.id,
-                        priority=1,
-                        remark='대치 가능',
-                    ))
+            # 대치품 추가 (20%)
+            semi_items = db.query(BOMItem).filter(BOMItem.bom_id == semi_bom.id).all()
+            sample_size = min(len(semi_items) // 5, 5)
+            if sample_size > 0:
+                for item in random.sample(semi_items, sample_size):
+                    sub_part = random.choice(elec_parts + mech_parts)
+                    if sub_part.id != item.child_part_id:
+                        db.add(BOMSubstitute(
+                            bom_item_id=item.id,
+                            substitute_part_id=sub_part.id,
+                            priority=1,
+                            remark='대치 가능',
+                        ))
 
         db.flush()
 
