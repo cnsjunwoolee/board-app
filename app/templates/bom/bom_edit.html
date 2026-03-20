@@ -511,7 +511,7 @@
   // ════════════════════════════════════════════
   // 필드 변경 핸들러
   // ════════════════════════════════════════════
-  function onFieldInput(el, idx, field, isNum) {
+  window.onFieldInput = function(el, idx, field, isNum) {
     if (!bomItems[idx]) return;
     bomItems[idx][field] = isNum ? parseFloat(el.value) || 0 : el.value;
   }
@@ -519,13 +519,13 @@
   // ════════════════════════════════════════════
   // 부품번호 Key-In 자동 조회
   // ════════════════════════════════════════════
-  function onPartNumberBlur(el, idx) {
+  window.onPartNumberBlur = function(el, idx) {
     const pn = el.value.trim();
     if (!pn) return;
     fetchPartInfo(pn, idx);
   }
 
-  function onPartNumberKeydown(e, el, idx) {
+  window.onPartNumberKeydown = function(e, el, idx) {
     if (e.key === 'Enter') {
       e.preventDefault();
       el.blur();
