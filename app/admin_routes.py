@@ -204,14 +204,8 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
     if not op:
         return RedirectResponse(url="/auth/login", status_code=303)
 
-    # 중복 생성 방지: 이미 Part가 2000개 이상이면 기존 BOM/Part 데이터 삭제 후 재생성
-    existing_count = db.query(Part).count()
-    if existing_count >= 2000:
-        db.query(BOMSubstitute).delete()
-        db.query(BOMItem).delete()
-        db.query(BOMHeader).delete()
-        db.query(Part).delete()
-        db.flush()
+    # 기존 부품 수를 오프셋으로 사용 (매번 추가 생성)
+    offset = db.query(Part).count()
 
     descriptions_model = ['세탁기 모델', '냉장고 모델', '에어컨 모델', '전자레인지 모델', 'TV 모델',
                           '건조기 모델', '식기세척기 모델', '공기청정기 모델', '로봇청소기 모델', '스타일러 모델']
@@ -232,11 +226,12 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
 
     # ── 부품 생성 ──────────────────────────────────────────────────────────────
 
-    # 모델 20개: MODELA-0001AA ~ MODELA-0020AA
+    # 모델 20개
     model_parts = []
     for i in range(1, 21):
+        n = offset + i
         p = Part(
-            part_number=f'MODELA-{i:04d}AA',
+            part_number=f'MODELA-{n:04d}AA',
             description=random.choice(descriptions_model) + f' {i}',
             spec=f'REV{i:02d}',
             category='모델',
@@ -250,11 +245,12 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
         model_parts.append(p)
     db.flush()
 
-    # 반제품 200개: SEMI00001A ~ SEMI00200A
+    # 반제품 200개
     semi_parts = []
     for i in range(1, 201):
+        n = offset + i
         p = Part(
-            part_number=f'SEMI{i:05d}A',
+            part_number=f'SEMI{n:05d}A',
             description=random.choice(descriptions_semi),
             spec=f'VER{i:03d}',
             category='반제품',
@@ -268,11 +264,12 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
         semi_parts.append(p)
     db.flush()
 
-    # 기구자재 600개: MECH00001A ~ MECH00600A
+    # 기구자재 600개
     mech_parts = []
     for i in range(1, 601):
+        n = offset + i
         p = Part(
-            part_number=f'MECH{i:05d}A',
+            part_number=f'MECH{n:05d}A',
             description=random.choice(descriptions_mech),
             spec=random.choice(specs_mech),
             category='기구자재',
@@ -286,11 +283,12 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
         mech_parts.append(p)
     db.flush()
 
-    # 회로자재 600개: ELEC00001A ~ ELEC00600A
+    # 회로자재 600개
     elec_parts = []
     for i in range(1, 601):
+        n = offset + i
         p = Part(
-            part_number=f'ELEC{i:05d}A',
+            part_number=f'ELEC{n:05d}A',
             description=random.choice(descriptions_elec),
             spec=random.choice(specs_elec),
             category='회로자재',
@@ -304,11 +302,12 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
         elec_parts.append(p)
     db.flush()
 
-    # 기타자재 580개: MISC00001A ~ MISC00580A
+    # 기타자재 580개
     misc_parts = []
     for i in range(1, 581):
+        n = offset + i
         p = Part(
-            part_number=f'MISC{i:05d}A',
+            part_number=f'MISC{n:05d}A',
             description=random.choice(descriptions_misc),
             spec='-',
             category='기타',
