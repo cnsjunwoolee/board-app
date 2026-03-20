@@ -120,6 +120,7 @@ class BOMHeader(Base):
     effective_date = Column(String(10))             # 'YYYY-MM-DD'
     status = Column(String(20), default="작성중")   # '작성중', '체크아웃', '승인', '폐기'
     checked_out = Column(Integer, default=0)        # 0=체크인, 1=체크아웃
+    checked_out_by = Column(String(50))              # 체크아웃한 운영진 이름
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
