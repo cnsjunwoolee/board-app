@@ -132,6 +132,32 @@
     font-size: 0.88rem;
   }
 
+  /* 읽기 전용 트리 행 (Level 2+) */
+  tr.readonly-tree-row td {
+    background: #f8f9fa !important;
+    color: var(--lg-gray-600);
+    font-size: 0.78rem;
+  }
+  tr.readonly-tree-row:hover td { background: #f0f1f3 !important; }
+
+  /* Level 0 루트 행 */
+  tr.root-row td {
+    background: #fff8e1 !important;
+    font-weight: 600;
+  }
+
+  /* 트리 토글 (편집 모드) */
+  .tree-toggle-edit {
+    cursor: pointer;
+    user-select: none;
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--lg-gray-600);
+  }
+  .tree-toggle-edit:hover { color: var(--lg-brand); }
+
   /* 모달 내 검색 결과 테이블 */
   .search-result-table td, .search-result-table th {
     font-size: 0.82rem;
@@ -160,6 +186,8 @@
       <button class="btn btn-sm btn-outline-secondary" onclick="addItem()" title="자재추가"><i class="bi bi-plus-circle"></i> 자재추가</button>
       <button class="btn btn-sm btn-outline-warning" onclick="showSearchModal()" title="검색으로 추가"><i class="bi bi-search"></i> 검색추가</button>
       <button class="btn btn-sm btn-outline-info" onclick="showExcelUpload()" title="Excel 업로드"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="expandAllEdit()" title="모두 펼치기"><i class="bi bi-arrows-expand"></i></button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllEdit()" title="모두 접기"><i class="bi bi-arrows-collapse"></i></button>
       <button class="btn btn-sm btn-outline-secondary" onclick="searchInBom()" title="BOM 내 검색"><i class="bi bi-funnel"></i> 검색</button>
       <button class="btn btn-sm btn-primary" onclick="saveBom()" title="저장"><i class="bi bi-floppy"></i> 저장</button>
       <a href="/bom/detail/{{ part.id }}?bom_type={{ bom_type }}{% if bom %}&version={{ bom.version }}{% endif %}{% if is_frame %}&frame=1{% endif %}"
@@ -199,17 +227,18 @@
       <thead class="table-light">
         <tr>
           <th style="width:28px;"></th>
+          <th style="width:30px;" class="text-center">Lv</th>
           <th style="min-width:140px;">부품번호</th>
           <th style="min-width:160px;">설명</th>
-          <th style="min-width:120px;">Spec</th>
+          <th style="min-width:100px;">Spec</th>
           <th style="width:68px;" class="text-center">수량</th>
           <th style="width:62px;" class="text-center">단위</th>
           <th style="width:85px">적용시작일</th>
           <th style="width:85px">적용종료일</th>
-          <th style="width:80px;" class="text-center">분류</th>
+          <th style="width:70px;" class="text-center">분류</th>
           <th style="width:40px;" class="text-center">BOM</th>
-          <th style="width:70px;" class="text-center">대치품</th>
-          <th style="min-width:110px;">비고</th>
+          <th style="width:60px;" class="text-center">대치품</th>
+          <th style="min-width:100px;">비고</th>
           <th style="width:50px;" class="text-center">작업</th>
         </tr>
       </thead>
@@ -374,16 +403,17 @@
   const BOM_TYPE  = {{ bom_type | tojson }};
   const BOM_VER   = {{ (bom.version if bom else "1.0") | tojson }};
   const IS_FRAME  = {{ 'true' if is_frame else 'false' }};
+  const ROOT_PART = {
+    part_number: {{ part.part_number | tojson }},
+    description: {{ part.description | tojson }},
+    spec: {{ (part.spec or '') | tojson }},
+    category: {{ (part.category or '') | tojson }}
+  };
 
   // ════════════════════════════════════════════
   // 데이터 모델
   // ════════════════════════════════════════════
   let bomItems = [];
-  // 구조: [{
-  //   id, child_part_id, part_number, description, spec, category,
-  //   quantity, unit, seq_no, remark, has_own_bom,
-  //   substitutes: [{part_id, part_number, description, priority, remark}]
-  // }]
 
   // ── 초기 데이터 로드 ──
   try {
@@ -392,6 +422,9 @@
   } catch (e) {
     bomItems = [];
   }
+
+  // 트리 접기/펼치기 상태
+  let collapsedSet = new Set();
 
   // ════════════════════════════════════════════
   // 렌더링
@@ -402,7 +435,7 @@
     const countLabel = document.getElementById('itemCountLabel');
 
     if (!bomItems.length) {
-      tbody.innerHTML = '';
+      tbody.innerHTML = renderRootRow();
       emptyMsg.style.display = '';
       countLabel.textContent = '';
       return;
@@ -411,92 +444,249 @@
     countLabel.textContent = '총 ' + bomItems.length + '개 자재';
 
     let html = '';
+
+    // Level 0: 최상위 모파트 (루트)
+    html += renderRootRow();
+
+    // Level 1: 편집 가능한 직접 자식 + Level 2+: 읽기 전용 하위 트리
     bomItems.forEach(function (item, idx) {
-      const subCount = (item.substitutes || []).length;
-      const subLabel = subCount > 0 ? '<i class="bi bi-arrow-left-right"></i> ' + subCount : '<i class="bi bi-arrow-left-right"></i>';
-
-      const unitOptions = ['EA','KG','M','SET','BOX','L','mm','g','PCS'].map(function(u){
-        return '<option value="' + u + '"' + (item.unit === u ? ' selected' : '') + '>' + u + '</option>';
-      }).join('');
-
-      html += '<tr data-idx="' + idx + '"'
-            + ' draggable="true" ondragstart="onDragStart(event,' + idx + ')"'
-            + ' ondragover="onDragOver(event,' + idx + ')" ondrop="onDrop(event,' + idx + ')"'
-            + ' ondragleave="onDragLeave(event)"'
-            + '>';
-
-      // 드래그 핸들
-      html += '<td class="text-center"><span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
-
-      // 부품번호
-      html += '<td><input type="text" class="cell-input pn-input" data-idx="' + idx + '"'
-            + ' value="' + esc(item.part_number) + '" placeholder="부품번호"'
-            + ' onblur="onPartNumberBlur(this,' + idx + ')"'
-            + ' onkeydown="onPartNumberKeydown(event,this,' + idx + ')">'
-            + '</td>';
-
-      // 설명
-      html += '<td><input type="text" class="cell-input" data-field="description" data-idx="' + idx + '"'
-            + ' value="' + esc(item.description) + '" placeholder="-" readonly'
-            + ' style="color:var(--lg-gray-500);"></td>';
-
-      // Spec
-      html += '<td><input type="text" class="cell-input" data-field="spec" data-idx="' + idx + '"'
-            + ' value="' + esc(item.spec) + '" placeholder="-" readonly'
-            + ' style="color:var(--lg-gray-500); font-size:0.78rem;"></td>';
-
-      // 수량
-      html += '<td><input type="number" class="cell-input text-end" data-field="quantity" data-idx="' + idx + '"'
-            + ' value="' + item.quantity + '" min="0" step="any"'
-            + ' oninput="onFieldInput(this,' + idx + ',\'quantity\',true)"></td>';
-
-      // 단위
-      html += '<td><select class="cell-select" data-field="unit" data-idx="' + idx + '"'
-            + ' onchange="onFieldInput(this,' + idx + ',\'unit\',false)">'
-            + unitOptions + '</select></td>';
-
-      // 적용시작일
-      html += '<td><input type="date" class="cell-input" data-field="effective_start" data-idx="' + idx + '"'
-            + ' value="' + esc(item.effective_start || '') + '"'
-            + ' oninput="onFieldInput(this,' + idx + ',\'effective_start\',false)" style="font-size:0.78rem;"></td>';
-
-      // 적용종료일
-      html += '<td><input type="date" class="cell-input" data-field="effective_end" data-idx="' + idx + '"'
-            + ' value="' + esc(item.effective_end || '9999-12-31') + '"'
-            + ' oninput="onFieldInput(this,' + idx + ',\'effective_end\',false)" style="font-size:0.78rem;"></td>';
-
-      // 분류
-      html += '<td class="text-center"><span style="font-size:0.75rem; color:var(--lg-gray-500);">'
-            + esc(item.category || '') + '</span></td>';
-
-      // BOM 링크 (자체 BOM 보유 여부)
-      html += '<td class="text-center">';
-      if (item.has_own_bom) {
-        html += '<a href="/bom/edit/' + item.child_part_id + '?bom_type=' + BOM_TYPE + (IS_FRAME ? '&frame=1' : '') + '" class="action-icon" title="하위 BOM 편집" onclick="event.stopPropagation();"><i class="bi bi-diagram-3"></i></a>';
-      } else {
-        html += '<span class="text-muted" style="font-size:0.75rem;">-</span>';
+      html += renderEditableRow(item, idx);
+      // 하위 트리 (읽기 전용)
+      if (item.children && item.children.length) {
+        html += renderReadOnlyTree(item.children, 'L1-' + idx);
       }
-      html += '</td>';
-
-      // 대치품
-      html += '<td class="text-center"><span class="sub-badge" onclick="openSubstituteModal(' + idx + ')">'
-            + subLabel + '</span></td>';
-
-      // 비고
-      html += '<td><input type="text" class="cell-input" data-field="remark" data-idx="' + idx + '"'
-            + ' value="' + esc(item.remark) + '" placeholder=""'
-            + ' oninput="onFieldInput(this,' + idx + ',\'remark\',false)"></td>';
-
-      // 작업 (삭제)
-      html += '<td class="text-center">'
-            + '<span class="action-icon del" onclick="removeItem(' + idx + ')" title="삭제"><i class="bi bi-trash3"></i></span>'
-            + '</td>';
-
-      html += '</tr>';
     });
 
     tbody.innerHTML = html;
   }
+
+  // Level 0 루트 행
+  function renderRootRow() {
+    const hasChildren = bomItems.length > 0;
+    const isCollapsed = collapsedSet.has('root');
+    return '<tr class="root-row" data-tree-id="root" data-tree-parent="" data-level="0">'
+      + '<td class="text-center">'
+      + (hasChildren ? '<span class="tree-toggle-edit" onclick="toggleEditNode(\'root\')">' + (isCollapsed ? '▶' : '▼') + '</span>' : '')
+      + '</td>'
+      + '<td class="text-center" style="font-size:0.78rem;">0</td>'
+      + '<td style="white-space:nowrap;"><span style="font-family:\'Courier New\',monospace; font-weight:700; color:var(--lg-brand);">' + esc(ROOT_PART.part_number) + '</span></td>'
+      + '<td>' + esc(ROOT_PART.description) + '</td>'
+      + '<td style="font-size:0.78rem;">' + esc(ROOT_PART.spec) + '</td>'
+      + '<td class="text-center">1</td>'
+      + '<td class="text-center">EA</td>'
+      + '<td class="text-center" style="font-size:0.78rem;">-</td>'
+      + '<td class="text-center" style="font-size:0.78rem;">-</td>'
+      + '<td class="text-center"><span style="font-size:0.75rem;">' + esc(ROOT_PART.category) + '</span></td>'
+      + '<td></td>'
+      + '<td></td>'
+      + '<td></td>'
+      + '<td></td>'
+      + '</tr>';
+  }
+
+  // Level 1 편집 가능 행
+  function renderEditableRow(item, idx) {
+    const isHidden = collapsedSet.has('root');
+    const subCount = (item.substitutes || []).length;
+    const subLabel = subCount > 0 ? '<i class="bi bi-arrow-left-right"></i> ' + subCount : '<i class="bi bi-arrow-left-right"></i>';
+    const hasChildren = item.children && item.children.length > 0;
+    const treeId = 'L1-' + idx;
+    const isCollapsed = collapsedSet.has(treeId);
+
+    const unitOptions = ['EA','KG','M','SET','BOX','L','mm','g','PCS'].map(function(u){
+      return '<option value="' + u + '"' + (item.unit === u ? ' selected' : '') + '>' + u + '</option>';
+    }).join('');
+
+    let html = '<tr data-idx="' + idx + '" data-tree-id="' + treeId + '" data-tree-parent="root" data-level="1"'
+          + (isHidden ? ' style="display:none;"' : '')
+          + ' draggable="true" ondragstart="onDragStart(event,' + idx + ')"'
+          + ' ondragover="onDragOver(event,' + idx + ')" ondrop="onDrop(event,' + idx + ')"'
+          + ' ondragleave="onDragLeave(event)"'
+          + '>';
+
+    // 드래그 핸들 + 트리 토글
+    html += '<td class="text-center">';
+    if (hasChildren) {
+      html += '<span class="tree-toggle-edit" onclick="toggleEditNode(\'' + treeId + '\')" style="margin-right:2px;">' + (isCollapsed ? '▶' : '▼') + '</span>';
+    }
+    html += '<span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
+
+    // Level
+    html += '<td class="text-center" style="font-size:0.78rem;">1</td>';
+
+    // 부품번호
+    html += '<td style="padding-left:24px;"><input type="text" class="cell-input pn-input" data-idx="' + idx + '"'
+          + ' value="' + esc(item.part_number) + '" placeholder="부품번호"'
+          + ' onblur="onPartNumberBlur(this,' + idx + ')"'
+          + ' onkeydown="onPartNumberKeydown(event,this,' + idx + ')">'
+          + '</td>';
+
+    // 설명
+    html += '<td><input type="text" class="cell-input" data-field="description" data-idx="' + idx + '"'
+          + ' value="' + esc(item.description) + '" placeholder="-" readonly'
+          + ' style="color:var(--lg-gray-500);"></td>';
+
+    // Spec
+    html += '<td><input type="text" class="cell-input" data-field="spec" data-idx="' + idx + '"'
+          + ' value="' + esc(item.spec) + '" placeholder="-" readonly'
+          + ' style="color:var(--lg-gray-500); font-size:0.78rem;"></td>';
+
+    // 수량
+    html += '<td><input type="number" class="cell-input text-end" data-field="quantity" data-idx="' + idx + '"'
+          + ' value="' + item.quantity + '" min="0" step="any"'
+          + ' oninput="onFieldInput(this,' + idx + ',\'quantity\',true)"></td>';
+
+    // 단위
+    html += '<td><select class="cell-select" data-field="unit" data-idx="' + idx + '"'
+          + ' onchange="onFieldInput(this,' + idx + ',\'unit\',false)">'
+          + unitOptions + '</select></td>';
+
+    // 적용시작일
+    html += '<td><input type="date" class="cell-input" data-field="effective_start" data-idx="' + idx + '"'
+          + ' value="' + esc(item.effective_start || '') + '"'
+          + ' oninput="onFieldInput(this,' + idx + ',\'effective_start\',false)" style="font-size:0.78rem;"></td>';
+
+    // 적용종료일
+    html += '<td><input type="date" class="cell-input" data-field="effective_end" data-idx="' + idx + '"'
+          + ' value="' + esc(item.effective_end || '9999-12-31') + '"'
+          + ' oninput="onFieldInput(this,' + idx + ',\'effective_end\',false)" style="font-size:0.78rem;"></td>';
+
+    // 분류
+    html += '<td class="text-center"><span style="font-size:0.75rem; color:var(--lg-gray-500);">'
+          + esc(item.category || '') + '</span></td>';
+
+    // BOM 링크
+    html += '<td class="text-center">';
+    if (item.has_own_bom) {
+      html += '<a href="/bom/edit/' + item.child_part_id + '?bom_type=' + BOM_TYPE + (IS_FRAME ? '&frame=1' : '') + '" class="action-icon" title="하위 BOM 편집" onclick="event.stopPropagation();"><i class="bi bi-diagram-3"></i></a>';
+    } else {
+      html += '<span class="text-muted" style="font-size:0.75rem;">-</span>';
+    }
+    html += '</td>';
+
+    // 대치품
+    html += '<td class="text-center"><span class="sub-badge" onclick="openSubstituteModal(' + idx + ')">'
+          + subLabel + '</span></td>';
+
+    // 비고
+    html += '<td><input type="text" class="cell-input" data-field="remark" data-idx="' + idx + '"'
+          + ' value="' + esc(item.remark) + '" placeholder=""'
+          + ' oninput="onFieldInput(this,' + idx + ',\'remark\',false)"></td>';
+
+    // 작업 (삭제)
+    html += '<td class="text-center">'
+          + '<span class="action-icon del" onclick="removeItem(' + idx + ')" title="삭제"><i class="bi bi-trash3"></i></span>'
+          + '</td>';
+
+    html += '</tr>';
+    return html;
+  }
+
+  // Level 2+ 읽기 전용 재귀 렌더링
+  function renderReadOnlyTree(children, parentTreeId) {
+    let html = '';
+    const parentIsHidden = isAncestorCollapsed(parentTreeId);
+    children.forEach(function(child, ci) {
+      const treeId = parentTreeId + '-' + ci;
+      const hasKids = child.children && child.children.length > 0;
+      const level = child.level || 2;
+      const isCollapsed = collapsedSet.has(treeId);
+      const isHidden = parentIsHidden || collapsedSet.has(parentTreeId);
+
+      html += '<tr class="readonly-tree-row" data-tree-id="' + treeId + '" data-tree-parent="' + parentTreeId + '" data-level="' + level + '"'
+            + (isHidden ? ' style="display:none;"' : '') + '>';
+
+      // 토글
+      html += '<td class="text-center">';
+      if (hasKids) {
+        html += '<span class="tree-toggle-edit" onclick="toggleEditNode(\'' + treeId + '\')">' + (isCollapsed ? '▶' : '▼') + '</span>';
+      }
+      html += '</td>';
+
+      // Level
+      html += '<td class="text-center" style="font-size:0.72rem;">' + level + '</td>';
+
+      // 부품번호 (인덴트)
+      html += '<td style="padding-left:' + (level * 24) + 'px; white-space:nowrap; font-family:\'Courier New\',monospace; font-size:0.78rem;">'
+            + esc(child.part_number) + '</td>';
+
+      // 설명
+      html += '<td>' + esc(child.description) + '</td>';
+
+      // Spec
+      html += '<td style="font-size:0.76rem;">' + esc(child.spec || '') + '</td>';
+
+      // 수량
+      html += '<td class="text-center">' + child.quantity + '</td>';
+
+      // 단위
+      html += '<td class="text-center">' + esc(child.unit || '') + '</td>';
+
+      // 적용시작/종료 (비어있음)
+      html += '<td class="text-center" style="font-size:0.76rem;">-</td>';
+      html += '<td class="text-center" style="font-size:0.76rem;">-</td>';
+
+      // 분류
+      html += '<td class="text-center"><span style="font-size:0.72rem;">' + esc(child.category || '') + '</span></td>';
+
+      // BOM 링크
+      html += '<td class="text-center">';
+      if (hasKids) {
+        html += '<a href="/bom/edit/' + child.child_part_id + '?bom_type=' + BOM_TYPE + (IS_FRAME ? '&frame=1' : '') + '" class="action-icon" title="하위 BOM 편집" onclick="event.stopPropagation();" style="width:20px;height:20px;font-size:0.72rem;"><i class="bi bi-diagram-3"></i></a>';
+      } else {
+        html += '<span class="text-muted" style="font-size:0.72rem;">-</span>';
+      }
+      html += '</td>';
+
+      // 대치품 / 비고 / 작업 (빈칸)
+      html += '<td></td><td style="font-size:0.76rem;">' + esc(child.remark || '') + '</td><td></td>';
+
+      html += '</tr>';
+
+      if (hasKids) {
+        html += renderReadOnlyTree(child.children, treeId);
+      }
+    });
+    return html;
+  }
+
+  // 트리 접기/펼치기
+  function isAncestorCollapsed(treeId) {
+    // 조상 중 하나라도 접혀있으면 숨김
+    const parts = treeId.split('-');
+    for (let i = 1; i < parts.length; i++) {
+      const ancestor = parts.slice(0, i).join('-');
+      if (collapsedSet.has(ancestor)) return true;
+    }
+    // root 체크
+    if (treeId !== 'root' && collapsedSet.has('root')) return true;
+    return false;
+  }
+
+  window.toggleEditNode = function(treeId) {
+    if (collapsedSet.has(treeId)) {
+      collapsedSet.delete(treeId);
+    } else {
+      collapsedSet.add(treeId);
+    }
+    renderBomTable();
+  };
+
+  window.expandAllEdit = function() {
+    collapsedSet.clear();
+    renderBomTable();
+  };
+
+  window.collapseAllEdit = function() {
+    // root + 모든 Level 1 아이템 접기
+    collapsedSet.add('root');
+    bomItems.forEach(function(item, idx) {
+      if (item.children && item.children.length) {
+        collapsedSet.add('L1-' + idx);
+      }
+    });
+    renderBomTable();
+  };
 
   // HTML 특수문자 이스케이프
   function esc(str) {

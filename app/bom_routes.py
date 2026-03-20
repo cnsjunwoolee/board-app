@@ -339,6 +339,12 @@ def bom_edit(
             BOMHeader.bom_type == bom_type,
         ).first() is not None
 
+        # 자식 부품의 하위 트리 (표시용, 편집 불가)
+        sub_children = []
+        if has_own_bom:
+            sub_tree = build_recursive_tree(item.child_part_id, bom_type, db, level=2)
+            sub_children = [node_to_dict(n) for n in sub_tree]
+
         flat_list.append({
             "id": item.id,
             "child_part_id": item.child_part_id,
@@ -353,6 +359,7 @@ def bom_edit(
             "effective_end": item.effective_end or "9999-12-31",
             "remark": item.remark or "",
             "has_own_bom": has_own_bom,
+            "children": sub_children,
             "substitutes": [
                 {
                     "part_id": s.substitute_part_id,

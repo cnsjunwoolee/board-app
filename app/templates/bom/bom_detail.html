@@ -92,12 +92,39 @@
         </tr>
       </thead>
       <tbody id="bomTreeBody">
+        <!-- Level 0: 최상위 모파트 -->
+        <tr data-row-id="row-root" data-parent-row="" data-level="0" class="tree-data-row table-warning">
+          <td class="text-center fw-bold">0</td>
+          <td style="white-space:nowrap;">
+            {% if tree %}
+            <span class="tree-toggle" onclick="toggleNode('row-root')">▼</span>
+            {% else %}
+            <span style="width:16px;display:inline-block;"></span>
+            {% endif %}
+            <span class="tree-pn fw-bold">{{ part.part_number }}</span>
+          </td>
+          <td class="fw-bold">{{ part.description }}</td>
+          <td>{{ part.spec or '' }}</td>
+          <td class="text-center">
+            {% if bom_header %}<small class="fw-bold">v{{ bom_header.version }}</small>{% else %}<small class="text-muted">-</small>{% endif %}
+          </td>
+          <td class="text-center">1</td>
+          <td class="text-center">EA</td>
+          <td class="text-center">-</td>
+          <td class="text-center">-</td>
+          <td>{{ part.category or '-' }}</td>
+          <td></td>
+          <td class="text-center">
+            <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}{% if bom_header %}&version={{ bom_header.version }}{% endif %}" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;">편집</a>
+          </td>
+        </tr>
+
         <!-- Jinja2 매크로로 트리 렌더링 -->
         {% macro render_tree_row(node, parent_row_id='') %}
         {% set row_id = 'row-' ~ node.item.id %}
         <tr data-row-id="{{ row_id }}" data-parent-row="{{ parent_row_id }}" data-level="{{ node.level }}" class="tree-data-row">
           <td class="text-center text-muted">{{ node.level }}</td>
-          <td style="padding-left: {{ (node.level - 1) * 24 }}px; white-space:nowrap;">
+          <td style="padding-left: {{ (node.level) * 24 }}px; white-space:nowrap;">
             {% if node.children %}
             <span class="tree-toggle" onclick="toggleNode('{{ row_id }}')">▼</span>
             {% else %}
@@ -133,7 +160,7 @@
         {% for sub in node.item.substitutes %}
         <tr data-row-id="{{ row_id }}-sub-{{ sub.id }}" data-parent-row="{{ parent_row_id }}" data-sub-of="{{ node.item.id }}" data-level="{{ node.level }}" class="tree-row-sub tree-data-row">
           <td class="text-center text-muted"></td>
-          <td style="padding-left: {{ (node.level - 1) * 24 + 16 }}px; white-space:nowrap;">
+          <td style="padding-left: {{ (node.level) * 24 + 16 }}px; white-space:nowrap;">
             <span style="width:16px;display:inline-block;"></span>
             <span class="tree-sub-pn">*{{ sub.substitute_part.part_number }}</span>
           </td>
@@ -155,7 +182,7 @@
         {% endmacro %}
 
         {% for node in tree %}
-          {{ render_tree_row(node) }}
+          {{ render_tree_row(node, 'row-root') }}
         {% endfor %}
       </tbody>
     </table>
@@ -225,11 +252,11 @@ function toggleAll(open) {
       tr.style.display = '';
     });
   } else {
-    // 접기: level 1이 아닌 것 숨김
+    // 접기: level 0만 보이고 나머지 숨김
     document.querySelectorAll('#bomTreeBody tr.tree-data-row').forEach(tr => {
       const lv = parseInt(tr.dataset.level || '0');
       const isSub = tr.dataset.subOf;
-      if (lv > 1 || isSub) tr.style.display = 'none';
+      if (lv > 0 || isSub) tr.style.display = 'none';
     });
   }
 }
