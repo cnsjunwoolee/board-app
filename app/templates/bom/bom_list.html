@@ -62,7 +62,7 @@
         {% if parts %}
           {% for part in parts %}
           {% set row_num = (page - 1) * page_size + loop.index %}
-          {% set bom_types = bom_type_map.get(part.id, set()) %}
+          {% set bom_types = bom_type_map.get(part.id, []) %}
           <tr style="cursor:pointer;" onclick="location.href='/bom/detail/{{ part.id }}{% if is_frame %}?frame=1{% endif %}'">
             <td class="text-center text-muted">{{ row_num }}</td>
             <td><span class="tbl-part-num">{{ part.part_number }}</span></td>
@@ -111,7 +111,7 @@
   <div class="d-md-none">
     {% if parts %}
       {% for part in parts %}
-      {% set bom_types = bom_type_map.get(part.id, set()) %}
+      {% set bom_types = bom_type_map.get(part.id, []) %}
       <a href="/bom/detail/{{ part.id }}{% if is_frame %}?frame=1{% endif %}" class="text-decoration-none">
         <div class="card mb-2 post-card">
           <div class="card-body py-2 px-3">

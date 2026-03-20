@@ -118,9 +118,11 @@ def bom_list(
     ) if part_ids else []
 
     # part_id → {bom_type set}
-    bom_type_map: dict[int, set] = {}
+    bom_type_map = {}
     for h in bom_headers:
-        bom_type_map.setdefault(h.part_id, set()).add(h.bom_type)
+        bom_type_map.setdefault(h.part_id, [])
+        if h.bom_type not in bom_type_map[h.part_id]:
+            bom_type_map[h.part_id].append(h.bom_type)
 
     # 카테고리 목록 (드롭다운용)
     categories = [
