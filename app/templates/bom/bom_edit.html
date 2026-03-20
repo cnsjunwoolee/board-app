@@ -165,6 +165,9 @@
   .tree-toggle.collapsed { transform: rotate(-90deg); }
   tr.tree-hidden { display: none; }
 
+  /* 행 선택 */
+  tr.row-selected td { background: #e3f2fd !important; }
+
   /* 하이라이트 (BOM 내 검색) */
   tr.search-highlight td { background: #fffde7 !important; }
 
@@ -233,6 +236,7 @@
     <button class="btn btn-sm btn-outline-success" onclick="checkIn()" title="Check-In"><i class="bi bi-box-arrow-in-down-left"></i> Check-In</button>
     <button class="btn btn-sm btn-outline-danger" onclick="revise()" title="Revise"><i class="bi bi-arrow-up-circle"></i> Revise</button>
     <span class="ms-auto text-muted" style="font-size:0.78rem;" id="itemCountLabel"></span>
+    <span class="text-primary" style="font-size:0.78rem; font-weight:600;" id="selectedLabel"></span>
   </div>
 </div>
 
@@ -427,6 +431,7 @@
   // ════════════════════════════════════════════
   let bomItems = [];
   const collapsedSet = new Set();  // 접힌 노드 인덱스
+  let selectedIdx = null;  // 선택된 행 인덱스
   // 구조: [{
   //   id, child_part_id, part_number, description, spec, category,
   //   quantity, unit, seq_no, remark, level, parent_idx,
@@ -477,13 +482,17 @@
         return '<option value="' + u + '"' + (item.unit === u ? ' selected' : '') + '>' + u + '</option>';
       }).join('');
 
-      // 숨김 여부 계산
+      // 숨김 여부 및 선택 상태
       const isHidden = isRowHidden(idx);
+      const classes = [];
+      if (isHidden) classes.push('tree-hidden');
+      if (idx === selectedIdx) classes.push('row-selected');
       html += '<tr data-idx="' + idx + '" data-level="' + item.level + '"'
             + ' draggable="true" ondragstart="onDragStart(event,' + idx + ')"'
             + ' ondragover="onDragOver(event,' + idx + ')" ondrop="onDrop(event,' + idx + ')"'
             + ' ondragleave="onDragLeave(event)"'
-            + (isHidden ? ' class="tree-hidden"' : '') + '>';
+            + ' onclick="selectRow(event,' + idx + ')"'
+            + (classes.length ? ' class="' + classes.join(' ') + '"' : '') + '>';
 
       // 드래그 핸들
       html += '<td class="text-center"><span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
@@ -616,9 +625,38 @@
   }
 
   // ════════════════════════════════════════════
+  // 행 선택
+  // ════════════════════════════════════════════
+  window.selectRow = function(e, idx) {
+    // input/select/button 클릭 시에는 선택 변경하지 않음
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'select' || tag === 'button' || e.target.closest('.action-icon') || e.target.closest('.tree-toggle') || e.target.closest('.sub-badge') || e.target.closest('.drag-handle')) return;
+    selectedIdx = (selectedIdx === idx) ? null : idx;
+    document.querySelectorAll('#bomEditorBody tr').forEach(function(r) {
+      r.classList.toggle('row-selected', parseInt(r.dataset.idx) === selectedIdx);
+    });
+    updateSelectedLabel();
+  };
+
+  function updateSelectedLabel() {
+    const label = document.getElementById('selectedLabel');
+    if (selectedIdx !== null && bomItems[selectedIdx]) {
+      const pn = bomItems[selectedIdx].part_number || '(미입력)';
+      label.innerHTML = '<i class="bi bi-cursor-fill"></i> 선택: ' + esc(pn);
+    } else {
+      label.textContent = '';
+    }
+  }
+
+  // ════════════════════════════════════════════
   // 자재 추가
   // ════════════════════════════════════════════
   window.addRootItem = function() {
+    // 선택된 행이 있으면 그 하위에, 없으면 루트에 추가
+    if (selectedIdx !== null && bomItems[selectedIdx]) {
+      addChildItem(selectedIdx);
+      return;
+    }
     bomItems.push({
       id: null, child_part_id: null, part_number: '', description: '',
       spec: '', category: '', quantity: 1, unit: 'EA',
@@ -627,7 +665,6 @@
       substitutes: []
     });
     renderBomTable();
-    // 마지막 행의 부품번호 입력란에 포커스
     setTimeout(function() {
       const inputs = document.querySelectorAll('.pn-input');
       if (inputs.length) inputs[inputs.length - 1].focus();
@@ -685,6 +722,8 @@
     toRemove.forEach(function(i) { bomItems.splice(i, 1); });
 
     // parent_idx 재정규화
+    selectedIdx = null;
+    updateSelectedLabel();
     rebuildParentIdx();
     renderBomTable();
   };
