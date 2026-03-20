@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from sqlalchemy.orm import Session
@@ -204,6 +204,15 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
     if not op:
         return RedirectResponse(url="/auth/login", status_code=303)
 
+    try:
+        return _do_seed_bom(db)
+    except Exception as e:
+        db.rollback()
+        import traceback
+        return JSONResponse(status_code=500, content={"error": str(e), "trace": traceback.format_exc()})
+
+
+def _do_seed_bom(db: Session):
     # 기존 부품 수를 오프셋으로 사용 (매번 추가 생성)
     offset = db.query(Part).count()
 
