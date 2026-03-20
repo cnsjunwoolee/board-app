@@ -71,6 +71,23 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+# parent_item_id FK 제약 제거 (PLM 구조 변경으로 더이상 사용 안함)
+with engine.connect() as conn:
+    db_url = str(engine.url)
+    try:
+        if not db_url.startswith("sqlite"):
+            # PostgreSQL: FK 제약 찾아서 DROP
+            fk_rows = conn.execute(text("""
+                SELECT constraint_name FROM information_schema.table_constraints
+                WHERE table_name = 'bom_items' AND constraint_type = 'FOREIGN KEY'
+                AND constraint_name LIKE '%parent_item_id%'
+            """)).fetchall()
+            for row in fk_rows:
+                conn.execute(text(f"ALTER TABLE bom_items DROP CONSTRAINT {row[0]}"))
+            conn.commit()
+    except Exception:
+        pass
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """모든 요청에 current_operator를 request.state에 주입."""

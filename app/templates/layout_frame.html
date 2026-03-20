@@ -50,19 +50,12 @@
         return; // 정상 제출
       }
 
-      // POST 폼: fetch로 제출 → 리다이렉트 URL에 frame=1 붙여서 이동
-      e.preventDefault();
-      const body = new FormData(form);
-      fetch(form.action || window.location.href, {
-        method: 'POST',
-        body: body,
-        redirect: 'follow',
-        credentials: 'same-origin'
-      }).then(function (res) {
-        window.location.href = addFrame(res.url || window.location.href);
-      }).catch(function () {
-        form.submit(); // fetch 실패 시 일반 제출 fallback
-      });
+      // POST 폼: hidden input으로 frame=1 추가 후 일반 제출
+      if (!form.querySelector('input[name="frame"]')) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'frame'; inp.value = '1';
+        form.appendChild(inp);
+      }
     });
   })();
   </script>
