@@ -452,3 +452,18 @@ def seed_bom(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
     return RedirectResponse(url="/bom/parts", status_code=303)
+
+
+@admin_router.post("/clear-bom")
+def clear_bom(request: Request, db: Session = Depends(get_db)):
+    """BOM 관련 데이터 전체 삭제 (대치품 → BOM아이템 → BOM헤더 → 부품)."""
+    op = require_admin(request, db)
+    if not op:
+        return RedirectResponse(url="/auth/login", status_code=303)
+
+    db.query(BOMSubstitute).delete(synchronize_session=False)
+    db.query(BOMItem).delete(synchronize_session=False)
+    db.query(BOMHeader).delete(synchronize_session=False)
+    db.query(Part).delete(synchronize_session=False)
+    db.commit()
+    return RedirectResponse(url="/admin/operators", status_code=303)
