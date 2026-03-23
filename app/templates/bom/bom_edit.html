@@ -433,20 +433,23 @@
       + ' ondragleave="onDragLeave(event)"'
       + '>';
 
-    // 토글 + 드래그
-    html += '<td class="text-center" style="white-space:nowrap;">';
-    if (hasChildren) {
-      html += '<span class="tree-toggle-edit" onclick="toggleEditNode(\'' + path + '\')">' + (isCollapsed ? '&#9654;' : '&#9660;') + '</span>';
-    }
-    html += '<span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
+    // 드래그
+    html += '<td class="text-center" style="white-space:nowrap;">'
+      + '<span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
 
     // Level
     html += '<td class="text-center" style="font-size:0.78rem;">' + level + '</td>';
 
-    // 부품번호 (인덴트)
-    html += '<td style="padding-left:' + (level * 20) + 'px;">'
-      + '<input type="text" class="cell-input pn-input" data-path="' + path + '"'
+    // 부품번호 (토글 + 인덴트)
+    html += '<td style="padding-left:' + (level * 20) + 'px; white-space:nowrap;">';
+    if (hasChildren) {
+      html += '<span class="tree-toggle-edit" onclick="event.stopPropagation(); toggleEditNode(\'' + path + '\')">' + (isCollapsed ? '&#9654;' : '&#9660;') + '</span> ';
+    } else {
+      html += '<span style="width:16px;display:inline-block;"></span> ';
+    }
+    html += '<input type="text" class="cell-input pn-input" data-path="' + path + '"'
       + ' value="' + esc(item.part_number) + '" placeholder="부품번호"'
+      + ' style="width:calc(100% - 22px);display:inline-block;"'
       + ' onblur="onPartNumberBlur(this,\'' + path + '\')"'
       + ' onkeydown="onPartNumberKeydown(event,this,\'' + path + '\')">'
       + '</td>';

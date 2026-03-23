@@ -217,32 +217,53 @@ function queryByDate() {
   window.location.href = url.toString();
 }
 
-// Tree 접기/펼치기
-function getDescendantRows(rowId) {
+// Tree 접기/펼치기 — 직접 자식 행만 반환 (대치품 포함)
+function getDirectChildren(rowId) {
   const rows = [];
-  document.querySelectorAll(`#bomTreeBody tr[data-parent-row="${rowId}"]`).forEach(tr => {
-    rows.push(tr);
-    const childRowId = tr.dataset.rowId;
-    if (childRowId && !tr.dataset.subOf) {
-      rows.push(...getDescendantRows(childRowId));
-    }
-  });
-  // sub rows
-  const itemId = rowId.replace('row-', '');
-  document.querySelectorAll(`#bomTreeBody tr[data-sub-of="${itemId}"]`).forEach(tr => {
+  document.querySelectorAll('#bomTreeBody tr[data-parent-row="' + rowId + '"]').forEach(function(tr) {
     rows.push(tr);
   });
   return rows;
 }
 
+// 모든 자손 행 반환 (재귀)
+function getAllDescendants(rowId) {
+  const rows = [];
+  getDirectChildren(rowId).forEach(function(tr) {
+    rows.push(tr);
+    var childRowId = tr.dataset.rowId;
+    if (childRowId && !tr.dataset.subOf) {
+      getAllDescendants(childRowId).forEach(function(d) { rows.push(d); });
+    }
+  });
+  return rows;
+}
+
 function toggleNode(rowId) {
-  const mainRow = document.querySelector(`tr[data-row-id="${rowId}"]`);
-  const toggle = mainRow?.querySelector('.tree-toggle');
+  var mainRow = document.querySelector('tr[data-row-id="' + rowId + '"]');
+  var toggle = mainRow ? mainRow.querySelector('.tree-toggle') : null;
   if (!toggle) return;
-  const isOpen = toggle.textContent.trim() === '▼';
-  toggle.textContent = isOpen ? '▶' : '▼';
-  const descendants = getDescendantRows(rowId);
-  descendants.forEach(r => r.style.display = isOpen ? 'none' : '');
+  var isOpen = toggle.textContent.trim() === '▼';
+
+  if (isOpen) {
+    // 접기: 모든 자손 숨김
+    toggle.textContent = '▶';
+    getAllDescendants(rowId).forEach(function(r) { r.style.display = 'none'; });
+  } else {
+    // 펼치기: 직접 자식만 보이게 (하위 토글은 접힌 상태 유지)
+    toggle.textContent = '▼';
+    getDirectChildren(rowId).forEach(function(r) {
+      r.style.display = '';
+      // 직접 자식의 토글을 접힌 상태로 설정
+      var childToggle = r.querySelector('.tree-toggle');
+      if (childToggle) childToggle.textContent = '▶';
+      // 직접 자식의 자손은 숨김 유지
+      var childRowId = r.dataset.rowId;
+      if (childRowId && !r.dataset.subOf) {
+        getAllDescendants(childRowId).forEach(function(d) { d.style.display = 'none'; });
+      }
+    });
+  }
 }
 
 function toggleAll(open) {
