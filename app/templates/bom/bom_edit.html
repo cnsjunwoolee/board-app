@@ -681,6 +681,8 @@
         var level = selectedPath.split('-').length + 1;
         item.children.push(newEmptyItem(level));
         item.has_own_bom = true;
+        // 신규 BOM은 편집 가능 상태로 설정
+        if (!item.child_bom_checked_out) item.child_bom_checked_out = 1;
         collapsedSet.delete(selectedPath);
         var newPath = selectedPath + '-' + (item.children.length - 1);
         renderBomTable();
@@ -712,6 +714,8 @@
     var level = parseInt(path.split('-').length) + 1;
     item.children.push(newEmptyItem(level));
     item.has_own_bom = true;
+    // 신규 BOM은 편집 가능 상태로 설정
+    if (!item.child_bom_checked_out) item.child_bom_checked_out = 1;
     // 펼치기
     collapsedSet.delete(path);
     var newPath = path + '-' + (item.children.length - 1);
