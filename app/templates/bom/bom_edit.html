@@ -645,11 +645,33 @@
     }, 50);
   }
 
+  // ── 선택된 행의 BOM 체크아웃 여부 확인 ──
+  function isItemCheckedOut(item, path) {
+    // Level 1 자재: 루트 BOM 체크아웃 기준
+    if (path.split('-').length === 1) return !!ROOT_CHECKED_OUT;
+    // Level 2+: 부모 아이템의 child_bom_checked_out 기준
+    var parentPath = path.split('-').slice(0, -1).join('-');
+    var parentItem = getItemByPath(parentPath);
+    return parentItem ? !!parentItem.child_bom_checked_out : false;
+  }
+
   // ── 자재 추가 (선택된 행의 하위 레벨에 추가) ──
   window.addItem = function() {
     if (selectedPath !== null) {
       var item = getItemByPath(selectedPath);
       if (item) {
+        // 선택된 자재의 BOM이 체크아웃 되어있는지 확인
+        if (item.has_own_bom && !item.child_bom_checked_out) {
+          alert('[' + (item.part_number || '부품번호 없음') + '] 은(는) Check-In 상태입니다.\nCheck-Out 후 하위 자재를 추가할 수 있습니다.');
+          return;
+        }
+        if (!item.has_own_bom) {
+          // 자체 BOM이 없는 경우, 부모의 체크아웃 확인
+          if (!isItemCheckedOut(item, selectedPath)) {
+            alert('[' + (item.part_number || '부품번호 없음') + '] 의 상위 BOM이 Check-In 상태입니다.\nCheck-Out 후 하위 자재를 추가할 수 있습니다.');
+            return;
+          }
+        }
         if (!item.children) item.children = [];
         var level = selectedPath.split('-').length + 1;
         item.children.push(newEmptyItem(level));
@@ -662,6 +684,10 @@
       }
     }
     // 선택된 행이 없으면 Level 1 맨 끝에 추가
+    if (!ROOT_CHECKED_OUT) {
+      alert('루트 BOM이 Check-In 상태입니다.\nCheck-Out 후 자재를 추가할 수 있습니다.');
+      return;
+    }
     bomItems.push(newEmptyItem(1));
     var newPath = String(bomItems.length - 1);
     renderBomTable();
@@ -672,6 +698,11 @@
   window.addChildItem = function(path) {
     var item = getItemByPath(path);
     if (!item) return;
+    // 체크아웃 확인
+    if (item.has_own_bom && !item.child_bom_checked_out) {
+      alert('[' + (item.part_number || '부품번호 없음') + '] 은(는) Check-In 상태입니다.\nCheck-Out 후 하위 자재를 추가할 수 있습니다.');
+      return;
+    }
     if (!item.children) item.children = [];
     var level = parseInt(path.split('-').length) + 1;
     item.children.push(newEmptyItem(level));
