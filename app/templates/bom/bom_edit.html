@@ -89,6 +89,10 @@
   tr.row-disabled td { background: #f0f0f0 !important; color: #999; }
   tr.row-disabled input:disabled, tr.row-disabled select:disabled { background: #e9ecef; color: #999; }
 
+  /* 수정된 행 표시 */
+  tr.row-modified td:first-child { border-left: 4px solid #f59e0b !important; }
+  .modified-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#f59e0b; margin-left:4px; vertical-align:middle; title: "수정됨"; }
+
   tr.search-highlight td { background: #fffde7 !important; }
   .empty-bom {
     text-align: center; padding: 3rem 1rem; color: var(--lg-gray-500); font-size: 0.88rem;
@@ -309,6 +313,20 @@
 
   let collapsedSet = new Set();
   let selectedPath = null;  // 현재 선택된 행의 path
+  let modifiedPaths = new Set();  // 수정된 행 추적
+
+  function markModified(path) {
+    modifiedPaths.add(path);
+    var row = document.querySelector('tr[data-tree-id="' + path + '"]');
+    if (row) row.classList.add('row-modified');
+  }
+
+  function clearAllModified() {
+    modifiedPaths.clear();
+    document.querySelectorAll('tr.row-modified').forEach(function(r) {
+      r.classList.remove('row-modified');
+    });
+  }
 
   function selectRow(path) {
     selectedPath = (selectedPath === path) ? null : path;
@@ -447,7 +465,7 @@
     }
 
     let html = '<tr data-tree-id="' + path + '" data-tree-parent="' + parentTreeId + '" data-level="' + level + '"'
-      + ' class="' + rowClass + (selectedPath === path ? ' selected-row' : '') + (!editable ? ' row-disabled' : '') + '"'
+      + ' class="' + rowClass + (selectedPath === path ? ' selected-row' : '') + (!editable ? ' row-disabled' : '') + (modifiedPaths.has(path) ? ' row-modified' : '') + '"'
       + (isHidden ? ' style="display:none;"' : '')
       + ' draggable="' + (editable ? 'true' : 'false') + '"'
       + (editable ? ' ondragstart="onDragStart(event,\'' + path + '\')" ondragover="onDragOver(event,\'' + path + '\')" ondrop="onDrop(event,\'' + path + '\')" ondragleave="onDragLeave(event)"' : '')
@@ -587,6 +605,7 @@
     var item = getItemByPath(path);
     if (!item) return;
     item[field] = isNum ? parseFloat(el.value) || 0 : el.value;
+    markModified(path);
   };
 
   // ── 부품번호 자동조회 ──
@@ -605,6 +624,7 @@
         item.spec = data.spec;
         item.category = data.category;
         if (!item.unit || item.unit === 'EA') item.unit = data.unit || 'EA';
+        markModified(path);
         renderBomTable();
       }).catch(function(){});
   };
@@ -827,9 +847,8 @@
     })
     .then(function(r){ if(!r.ok) return r.json().catch(function(){return {};}).then(function(d){throw new Error(d.error||'저장 실패 (HTTP '+r.status+')');}); return r.json(); })
     .then(function(data){
-      var url = '/bom/detail/' + PART_ID + '?bom_type=' + encodeURIComponent(BOM_TYPE) + '&version=' + data.version;
-      if (IS_FRAME) url += '&frame=1';
-      window.location.href = url;
+      clearAllModified();
+      alert('저장 완료 (v' + data.version + ')');
     })
     .catch(function(err){
       var msg = '저장 중 오류 발생: ' + err.message;
