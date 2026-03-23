@@ -146,6 +146,8 @@ main.container { flex: 1; }
   border-bottom-color: var(--lg-brand); background: var(--lg-brand-light);
 }
 .tab-title { }
+.tab-popout { font-size: 0.82rem; color: var(--lg-gray-300); line-height: 1; cursor: pointer; margin-right: 2px; }
+.tab-popout:hover { color: #2563eb; }
 .tab-close { font-size: 0.95rem; color: var(--lg-gray-300); line-height: 1; }
 .tab-close:hover { color: var(--lg-brand); }
 

@@ -159,6 +159,7 @@
            onclick="activateTab('${t.id}')"
            ${t.closeable ? `draggable="true" data-tab-id="${t.id}"` : ''}>
         <span class="tab-title">${t.title}</span>
+        ${t.closeable ? `<span class="tab-popout" onclick="detachTab('${t.id}', event)" title="별도 창으로 띄우기">&#8599;</span>` : ''}
         ${t.closeable ? `<span class="tab-close" onclick="closeTab('${t.id}', event)">&#215;</span>` : ''}
       </div>
     `).join('');
@@ -169,13 +170,35 @@
     });
   }
 
+  // ── 탭 별도 창 분리 ──
+  function detachTab(id, e) {
+    if (e) e.stopPropagation();
+    const tab = tabs.find(t => t.id === id);
+    if (!tab) return;
+    const w = Math.round(window.innerWidth * 0.8);
+    const h = Math.round(window.innerHeight * 0.8);
+    const left = Math.round((screen.width - w) / 2);
+    const top = Math.round((screen.height - h) / 2);
+    window.open(tab.url, '_blank', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
+    // 원래 탭 닫기
+    const idx = tabs.findIndex(t => t.id === id);
+    if (idx >= 0) {
+      tabs.splice(idx, 1);
+      if (activeTabId === id) {
+        const nextTab = tabs[Math.max(0, idx - 1)];
+        if (nextTab) activateTab(nextTab.id);
+      }
+      renderTabs();
+      const panel = document.getElementById('panel-' + id);
+      if (panel) panel.remove();
+    }
+  }
+
   // ── 탭 드래그 → 별도 창 분리 ──
   let dragTabId = null;
-  let dragStartY = 0;
 
   function onTabDragStart(e) {
     dragTabId = e.currentTarget.dataset.tabId;
-    dragStartY = e.clientY;
     e.dataTransfer.setData('text/plain', dragTabId);
     e.dataTransfer.effectAllowed = 'move';
   }
@@ -184,30 +207,9 @@
     if (!dragTabId) return;
     const tabBar = document.getElementById('mdiTabBar');
     const barRect = tabBar.getBoundingClientRect();
-    // 탭바 밖으로 충분히 벗어나면 (50px 이상) 별도 창으로 분리
     if (e.clientY > barRect.bottom + 50 || e.clientY < barRect.top - 50 ||
         e.clientX < barRect.left - 50 || e.clientX > barRect.right + 50) {
-      const tab = tabs.find(t => t.id === dragTabId);
-      if (tab) {
-        const fullUrl = tab.url;
-        const w = Math.round(window.innerWidth * 0.8);
-        const h = Math.round(window.innerHeight * 0.8);
-        const left = Math.round(e.screenX - w / 2);
-        const top = Math.round(e.screenY - h / 2);
-        window.open(fullUrl, '_blank', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
-        // 원래 탭 닫기
-        const idx = tabs.findIndex(t => t.id === dragTabId);
-        if (idx >= 0) {
-          tabs.splice(idx, 1);
-          if (activeTabId === dragTabId) {
-            const nextTab = tabs[Math.max(0, idx - 1)];
-            if (nextTab) activateTab(nextTab.id);
-          }
-          renderTabs();
-          const panel = document.getElementById('panel-' + dragTabId);
-          if (panel) panel.remove();
-        }
-      }
+      detachTab(dragTabId);
     }
     dragTabId = null;
   }
