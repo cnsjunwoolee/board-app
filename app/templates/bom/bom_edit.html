@@ -81,6 +81,9 @@
   /* Level 2+ 행 배경 구분 */
   tr.child-level td { background: #f8fafb !important; }
 
+  /* 선택된 행 하이라이트 */
+  tr.selected-row td { background: #d0e8ff !important; outline: none; }
+
   tr.search-highlight td { background: #fffde7 !important; }
   .empty-bom {
     text-align: center; padding: 3rem 1rem; color: var(--lg-gray-500); font-size: 0.88rem;
@@ -300,6 +303,18 @@
   try { bomItems = {{ tree_data_json | safe }} || []; } catch(e) { bomItems = []; }
 
   let collapsedSet = new Set();
+  let selectedPath = null;  // 현재 선택된 행의 path
+
+  function selectRow(path) {
+    selectedPath = (selectedPath === path) ? null : path;
+    document.querySelectorAll('#bomEditorBody tr').forEach(function(r) {
+      r.classList.remove('selected-row');
+    });
+    if (selectedPath !== null) {
+      var row = document.querySelector('tr[data-tree-id="' + selectedPath + '"]');
+      if (row) row.classList.add('selected-row');
+    }
+  }
 
   // ── 트리 탐색 헬퍼 ──
   function getItemByPath(path) {
@@ -389,11 +404,12 @@
     }).join('');
 
     let html = '<tr data-tree-id="' + path + '" data-tree-parent="' + parentTreeId + '" data-level="' + level + '"'
-      + ' class="' + rowClass + '"'
+      + ' class="' + rowClass + (selectedPath === path ? ' selected-row' : '') + '"'
       + (isHidden ? ' style="display:none;"' : '')
       + ' draggable="true" ondragstart="onDragStart(event,\'' + path + '\')"'
       + ' ondragover="onDragOver(event,\'' + path + '\')" ondrop="onDrop(event,\'' + path + '\')"'
       + ' ondragleave="onDragLeave(event)"'
+      + ' onclick="selectRow(\'' + path + '\')"'
       + '>';
 
     // 토글 + 드래그
@@ -535,8 +551,23 @@
     if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
   };
 
-  // ── 자재 추가 (Level 1) ──
+  // ── 자재 추가 (선택된 행의 하위 또는 Level 1) ──
   window.addItem = function() {
+    if (selectedPath !== null) {
+      // 선택된 행이 있으면 그 하위에 추가
+      var item = getItemByPath(selectedPath);
+      if (item) {
+        if (!item.children) item.children = [];
+        var level = selectedPath.split('-').length + 1;
+        item.children.push(newEmptyItem(level));
+        item.has_own_bom = true;
+        collapsedSet.delete(selectedPath);
+        renderBomTable();
+        setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
+        return;
+      }
+    }
+    // 선택된 행이 없으면 Level 1에 추가
     bomItems.push(newEmptyItem(1));
     renderBomTable();
     setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
