@@ -87,7 +87,7 @@
 
   /* 편집 불가 행 (부모 미체크아웃) */
   tr.row-disabled td { background: #f0f0f0 !important; color: #999; }
-  tr.row-disabled input:disabled, tr.row-disabled select:disabled { background: #e9ecef; color: #999; }
+  tr.row-disabled input[readonly], tr.row-disabled select:disabled { background: #e9ecef; color: #999; cursor: default; }
   /* disabled 행도 선택 시 파란색 표시 */
   tr.row-disabled.selected-row td { background: #e0e8f0 !important; }
   tr.row-disabled.selected-row td:first-child { border-left: 4px solid #2563eb !important; }
@@ -448,8 +448,9 @@
     const rowClass = level > 1 ? ' child-level' : '';
     // 이 행의 편집 가능 여부: 부모가 체크아웃 되어야 편집 가능
     const editable = !!parentCheckedOut;
-    const dis = editable ? '' : ' disabled';
-    const disStyle = editable ? '' : 'opacity:0.6;pointer-events:none;';
+    const dis = editable ? '' : ' readonly tabindex="-1"';
+    const disSel = editable ? '' : ' disabled';  // select는 readonly 불가하므로 disabled 유지
+    const disStyle = editable ? '' : 'opacity:0.6;';
 
     const subCount = (item.substitutes || []).length;
     const subLabel = subCount > 0 ? '<i class="bi bi-arrow-left-right"></i> ' + subCount : '<i class="bi bi-arrow-left-right"></i>';
@@ -514,7 +515,7 @@
       + '></td>';
 
     // 단위
-    html += '<td><select class="cell-select"' + dis
+    html += '<td><select class="cell-select"' + disSel
       + (editable ? ' onchange="onFieldInput(this,\'' + path + '\',\'unit\',false)"' : '')
       + '>' + unitOptions + '</select></td>';
 
