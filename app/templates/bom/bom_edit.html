@@ -317,6 +317,19 @@
     }
   }
 
+  // 이벤트 위임: tbody 클릭 시 가장 가까운 tr의 data-tree-id로 선택
+  document.addEventListener('DOMContentLoaded', function() {
+    var tbody = document.getElementById('bomEditorBody');
+    if (tbody) {
+      tbody.addEventListener('click', function(e) {
+        // 버튼, 토글, 드래그 핸들은 제외
+        if (e.target.closest('button, .tree-toggle-edit, .drag-handle')) return;
+        var tr = e.target.closest('tr[data-tree-id]');
+        if (tr) selectRow(tr.getAttribute('data-tree-id'));
+      });
+    }
+  });
+
   // ── 트리 탐색 헬퍼 ──
   function getItemByPath(path) {
     const parts = path.split('-').map(Number);
@@ -410,7 +423,6 @@
       + ' draggable="true" ondragstart="onDragStart(event,\'' + path + '\')"'
       + ' ondragover="onDragOver(event,\'' + path + '\')" ondrop="onDrop(event,\'' + path + '\')"'
       + ' ondragleave="onDragLeave(event)"'
-      + ' onclick="selectRow(\'' + path + '\')"'
       + '>';
 
     // 토글 + 드래그
