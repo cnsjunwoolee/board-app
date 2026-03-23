@@ -505,9 +505,15 @@ async def bom_save(part_id: int, request: Request, db: Session = Depends(get_db)
             bom_header.effective_date = effective_date
             bom_header.status = status
 
-        # child_part_id가 없는 아이템 필터링 (새로 추가 후 부품번호 미입력 상태)
+        # child_part_id가 없는 아이템 재귀 필터링 (새로 추가 후 부품번호 미입력 상태)
         def filter_valid_items(items):
-            return [item for item in items if item.get("child_part_id")]
+            result = []
+            for item in items:
+                if not item.get("child_part_id"):
+                    continue
+                item["children"] = filter_valid_items(item.get("children", []))
+                result.append(item)
+            return result
 
         valid_items = filter_valid_items(items_data)
 

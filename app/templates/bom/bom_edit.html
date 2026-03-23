@@ -784,7 +784,7 @@
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload), credentials:'same-origin'
     })
-    .then(function(r){ if(!r.ok) return r.json().then(function(d){throw new Error(d.error||'저장 실패');}); return r.json(); })
+    .then(function(r){ if(!r.ok) return r.json().catch(function(){return {};}).then(function(d){throw new Error(d.error||'저장 실패 (HTTP '+r.status+')');}); return r.json(); })
     .then(function(data){
       var url = '/bom/detail/' + PART_ID + '?bom_type=' + encodeURIComponent(BOM_TYPE) + '&version=' + data.version;
       if (IS_FRAME) url += '&frame=1';
