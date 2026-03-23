@@ -318,17 +318,25 @@
   }
 
   // 이벤트 위임: tbody 클릭 시 가장 가까운 tr의 data-tree-id로 선택
-  document.addEventListener('DOMContentLoaded', function() {
+  function initRowSelection() {
     var tbody = document.getElementById('bomEditorBody');
     if (tbody) {
       tbody.addEventListener('click', function(e) {
         // 버튼, 토글, 드래그 핸들은 제외
         if (e.target.closest('button, .tree-toggle-edit, .drag-handle')) return;
         var tr = e.target.closest('tr[data-tree-id]');
-        if (tr) selectRow(tr.getAttribute('data-tree-id'));
+        if (tr && tr.getAttribute('data-tree-id') !== 'root') {
+          selectRow(tr.getAttribute('data-tree-id'));
+        }
       });
     }
-  });
+  }
+  // DOMContentLoaded가 이미 발생했을 수 있으므로 즉시 실행도 시도
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRowSelection);
+  } else {
+    initRowSelection();
+  }
 
   // ── 트리 탐색 헬퍼 ──
   function getItemByPath(path) {
@@ -564,16 +572,20 @@
     if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
   };
 
-  // ── 자재 추가 (선택된 행의 바로 아래 동일 레벨에 추가) ──
+  // ── 자재 추가 (선택된 행의 하위 레벨에 추가) ──
   window.addItem = function() {
     if (selectedPath !== null) {
-      var parentArr = getParentArray(selectedPath);
-      var idx = getIndexInParent(selectedPath);
-      var level = selectedPath.split('-').length;
-      parentArr.splice(idx + 1, 0, newEmptyItem(level));
-      renderBomTable();
-      setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
-      return;
+      var item = getItemByPath(selectedPath);
+      if (item) {
+        if (!item.children) item.children = [];
+        var level = selectedPath.split('-').length + 1;
+        item.children.push(newEmptyItem(level));
+        item.has_own_bom = true;
+        collapsedSet.delete(selectedPath);
+        renderBomTable();
+        setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
+        return;
+      }
     }
     // 선택된 행이 없으면 Level 1 맨 끝에 추가
     bomItems.push(newEmptyItem(1));
