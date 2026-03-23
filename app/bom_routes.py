@@ -240,7 +240,7 @@ def _save_tree_recursive(items_data, parent_part_id, bom_type, db, root_version=
 
     # 자식 레벨 재귀 저장
     for item_data in items_data:
-        children = item_data.get("children", [])
+        children = [c for c in item_data.get("children", []) if c.get("child_part_id")]
         child_part_id = item_data.get("child_part_id")
         if children and child_part_id:
             # 자식 파트의 BOM 헤더 찾기/생성
@@ -477,36 +477,49 @@ def bom_edit(
 
 @bom_router.post("/edit/{part_id}/save")
 async def bom_save(part_id: int, request: Request, db: Session = Depends(get_db)):
-    body = await request.json()
-    bom_type = body.get("bom_type", "E-BOM")
-    version = str(body.get("version", "1.0"))
-    effective_date = body.get("effective_date") or None
-    status = body.get("status", "작성중")
-    items_data = body.get("items", [])
+    import traceback
+    try:
+        body = await request.json()
+        bom_type = body.get("bom_type", "E-BOM")
+        version = str(body.get("version", "1.0"))
+        effective_date = body.get("effective_date") or None
+        status = body.get("status", "작성중")
+        items_data = body.get("items", [])
 
-    part = db.query(Part).filter(Part.id == part_id).first()
-    if not part:
-        return JSONResponse(status_code=404, content={"error": "부품을 찾을 수 없습니다."})
+        part = db.query(Part).filter(Part.id == part_id).first()
+        if not part:
+            return JSONResponse(status_code=404, content={"error": "부품을 찾을 수 없습니다."})
 
-    bom_header = db.query(BOMHeader).filter(
-        BOMHeader.part_id == part_id, BOMHeader.bom_type == bom_type, BOMHeader.version == version,
-    ).first()
+        bom_header = db.query(BOMHeader).filter(
+            BOMHeader.part_id == part_id, BOMHeader.bom_type == bom_type, BOMHeader.version == version,
+        ).first()
 
-    if not bom_header:
-        bom_header = BOMHeader(
-            part_id=part_id, bom_type=bom_type, version=version,
-            effective_date=effective_date, status=status,
-        )
-        db.add(bom_header)
-        db.flush()
-    else:
-        bom_header.effective_date = effective_date
-        bom_header.status = status
+        if not bom_header:
+            bom_header = BOMHeader(
+                part_id=part_id, bom_type=bom_type, version=version,
+                effective_date=effective_date, status=status,
+            )
+            db.add(bom_header)
+            db.flush()
+        else:
+            bom_header.effective_date = effective_date
+            bom_header.status = status
 
-    # 재귀적으로 트리 전체 저장
-    _save_tree_recursive(items_data, part_id, bom_type, db, root_version=version)
-    db.commit()
-    return JSONResponse(content={"ok": True, "bom_id": bom_header.id, "version": bom_header.version})
+        # child_part_id가 없는 아이템 필터링 (새로 추가 후 부품번호 미입력 상태)
+        def filter_valid_items(items):
+            return [item for item in items if item.get("child_part_id")]
+
+        valid_items = filter_valid_items(items_data)
+
+        # 재귀적으로 트리 전체 저장
+        _save_tree_recursive(valid_items, part_id, bom_type, db, root_version=version)
+        db.commit()
+        return JSONResponse(content={"ok": True, "bom_id": bom_header.id, "version": bom_header.version})
+    except Exception as e:
+        db.rollback()
+        print(f"[BOM SAVE ERROR] part_id={part_id}: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": f"저장 실패: {str(e)}"})
 
 
 # ── 6. POST /bom/edit/{part_id}/upload-excel ─────────────────────────────────
