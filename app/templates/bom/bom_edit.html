@@ -790,7 +790,16 @@
       if (IS_FRAME) url += '&frame=1';
       window.location.href = url;
     })
-    .catch(function(err){ alert('저장 중 오류 발생: ' + err.message); });
+    .catch(function(err){
+      var msg = '저장 중 오류 발생: ' + err.message;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(msg).then(function(){
+          alert(msg + '\n\n(에러 메시지가 클립보드에 복사되었습니다)');
+        }).catch(function(){ prompt('저장 중 오류 발생 (아래 텍스트를 복사하세요):', msg); });
+      } else {
+        prompt('저장 중 오류 발생 (Ctrl+C로 복사하세요):', msg);
+      }
+    });
   };
 
   // saveBomSilent: 저장 후 리디렉션 없음
