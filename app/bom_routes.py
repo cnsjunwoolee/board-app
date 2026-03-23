@@ -187,6 +187,11 @@ def build_editable_tree(part_id: int, bom_type: str, db: Session, level: int = 1
 
 def _save_items_to_bom(items_data, bom_header, db):
     """BOM 헤더에 아이템 저장 (기존 삭제 후 새로 생성)"""
+    # substitutes 먼저 삭제 (FK 제약)
+    old_items = db.query(BOMItem.id).filter(BOMItem.bom_id == bom_header.id).all()
+    old_item_ids = [r[0] for r in old_items]
+    if old_item_ids:
+        db.query(BOMSubstitute).filter(BOMSubstitute.bom_item_id.in_(old_item_ids)).delete(synchronize_session=False)
     db.query(BOMItem).filter(BOMItem.bom_id == bom_header.id).delete(synchronize_session=False)
     db.flush()
 
