@@ -85,6 +85,10 @@
   tr.selected-row td { background: #d0e8ff !important; outline: none; }
   tr.selected-row td:first-child { border-left: 4px solid #2563eb !important; }
 
+  /* 편집 불가 행 (부모 미체크아웃) */
+  tr.row-disabled td { background: #f0f0f0 !important; color: #999; }
+  tr.row-disabled input:disabled, tr.row-disabled select:disabled { background: #e9ecef; color: #999; }
+
   tr.search-highlight td { background: #fffde7 !important; }
   .empty-bom {
     text-align: center; padding: 3rem 1rem; color: var(--lg-gray-500); font-size: 0.88rem;
@@ -152,8 +156,8 @@
              style="width:auto;" value="{{ bom.effective_date if bom and bom.effective_date else '' }}">
     </div>
     <button class="btn btn-sm btn-outline-secondary" onclick="createNewVersion()" title="새 버전 생성"><i class="bi bi-copy"></i> 새 버전</button>
-    <button class="btn btn-sm btn-outline-info" onclick="checkOut()" title="Check-Out (하위 BOM 포함)"><i class="bi bi-box-arrow-up-right"></i> Check-Out</button>
-    <button class="btn btn-sm btn-outline-success" onclick="checkIn()" title="Check-In (하위 BOM 포함)"><i class="bi bi-box-arrow-in-down-left"></i> Check-In</button>
+    <button class="btn btn-sm btn-outline-info" onclick="checkOut()" title="Check-Out (현재 BOM만)"><i class="bi bi-box-arrow-up-right"></i> Check-Out</button>
+    <button class="btn btn-sm btn-outline-success" onclick="checkIn()" title="Check-In (현재 BOM만)"><i class="bi bi-box-arrow-in-down-left"></i> Check-In</button>
     <button class="btn btn-sm btn-outline-danger" onclick="revise()" title="Revise"><i class="bi bi-arrow-up-circle"></i> Revise</button>
     <span class="ms-auto text-muted" style="font-size:0.78rem;" id="itemCountLabel"></span>
   </div>
@@ -389,7 +393,7 @@
     countLabel.textContent = '총 ' + countAllItems(bomItems) + '개 자재';
 
     bomItems.forEach(function(item, idx) {
-      html += renderTreeRow(item, String(idx), 1, 'root');
+      html += renderTreeRow(item, String(idx), 1, 'root', ROOT_CHECKED_OUT);
     });
     tbody.innerHTML = html;
   }
@@ -411,12 +415,19 @@
       + '<td></td><td></td><td></td></tr>';
   }
 
-  function renderTreeRow(item, path, level, parentTreeId) {
+  // 부모가 체크아웃 되었는지 확인 (Level 1은 루트 BOM 체크아웃 기준)
+  const ROOT_CHECKED_OUT = {{ (bom.checked_out if bom else 0) | tojson }};
+
+  function renderTreeRow(item, path, level, parentTreeId, parentCheckedOut) {
     const isHidden = isAncestorCollapsed(path);
     const hasChildren = item.children && item.children.length > 0;
     const isCollapsed = collapsedSet.has(path);
     const isLevel1 = (level === 1);
     const rowClass = level > 1 ? ' child-level' : '';
+    // 이 행의 편집 가능 여부: 부모가 체크아웃 되어야 편집 가능
+    const editable = !!parentCheckedOut;
+    const dis = editable ? '' : ' disabled';
+    const disStyle = editable ? '' : 'opacity:0.6;pointer-events:none;';
 
     const subCount = (item.substitutes || []).length;
     const subLabel = subCount > 0 ? '<i class="bi bi-arrow-left-right"></i> ' + subCount : '<i class="bi bi-arrow-left-right"></i>';
@@ -425,22 +436,34 @@
       return '<option value="' + u + '"' + (item.unit === u ? ' selected' : '') + '>' + u + '</option>';
     }).join('');
 
+    // 체크아웃 상태 배지
+    var coIcon = '';
+    if (item.has_own_bom) {
+      if (item.child_bom_checked_out) {
+        coIcon = ' <span class="badge bg-warning text-dark" style="font-size:0.62rem;cursor:pointer;" onclick="event.stopPropagation();itemCheckIn(\'' + path + '\',' + item.child_part_id + ')" title="Check-In (클릭)">CO</span>';
+      } else {
+        coIcon = ' <span class="badge bg-secondary" style="font-size:0.62rem;cursor:pointer;" onclick="event.stopPropagation();itemCheckOut(\'' + path + '\',' + item.child_part_id + ')" title="Check-Out (클릭)">CI</span>';
+      }
+    }
+
     let html = '<tr data-tree-id="' + path + '" data-tree-parent="' + parentTreeId + '" data-level="' + level + '"'
-      + ' class="' + rowClass + (selectedPath === path ? ' selected-row' : '') + '"'
+      + ' class="' + rowClass + (selectedPath === path ? ' selected-row' : '') + (!editable ? ' row-disabled' : '') + '"'
       + (isHidden ? ' style="display:none;"' : '')
-      + ' draggable="true" ondragstart="onDragStart(event,\'' + path + '\')"'
-      + ' ondragover="onDragOver(event,\'' + path + '\')" ondrop="onDrop(event,\'' + path + '\')"'
-      + ' ondragleave="onDragLeave(event)"'
+      + ' draggable="' + (editable ? 'true' : 'false') + '"'
+      + (editable ? ' ondragstart="onDragStart(event,\'' + path + '\')" ondragover="onDragOver(event,\'' + path + '\')" ondrop="onDrop(event,\'' + path + '\')" ondragleave="onDragLeave(event)"' : '')
       + '>';
 
     // 드래그
-    html += '<td class="text-center" style="white-space:nowrap;">'
-      + '<span class="drag-handle" title="드래그로 순서 변경">&#9776;</span></td>';
+    html += '<td class="text-center" style="white-space:nowrap;">';
+    if (editable) {
+      html += '<span class="drag-handle" title="드래그로 순서 변경">&#9776;</span>';
+    }
+    html += '</td>';
 
     // Level
     html += '<td class="text-center" style="font-size:0.78rem;">' + level + '</td>';
 
-    // 부품번호 (토글 + 인덴트)
+    // 부품번호 (토글 + 인덴트 + 체크아웃 배지)
     html += '<td style="padding-left:' + (level * 20) + 'px; white-space:nowrap;">';
     if (hasChildren) {
       html += '<span class="tree-toggle-edit" onclick="event.stopPropagation(); toggleEditNode(\'' + path + '\')">' + (isCollapsed ? '&#9654;' : '&#9660;') + '</span> ';
@@ -449,9 +472,11 @@
     }
     html += '<input type="text" class="cell-input pn-input" data-path="' + path + '"'
       + ' value="' + esc(item.part_number) + '" placeholder="부품번호"'
-      + ' style="width:calc(100% - 22px);display:inline-block;"'
-      + ' onblur="onPartNumberBlur(this,\'' + path + '\')"'
-      + ' onkeydown="onPartNumberKeydown(event,this,\'' + path + '\')">'
+      + ' style="width:calc(100% - ' + (item.has_own_bom ? '50px' : '22px') + ');display:inline-block;"'
+      + dis
+      + (editable ? ' onblur="onPartNumberBlur(this,\'' + path + '\')" onkeydown="onPartNumberKeydown(event,this,\'' + path + '\')"' : '')
+      + '>'
+      + coIcon
       + '</td>';
 
     // 설명 (readonly)
@@ -462,41 +487,54 @@
 
     // 수량
     html += '<td><input type="number" class="cell-input text-end" value="' + item.quantity + '" min="0" step="any"'
-      + ' oninput="onFieldInput(this,\'' + path + '\',\'quantity\',true)"></td>';
+      + dis
+      + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'quantity\',true)"' : '')
+      + '></td>';
 
     // 단위
-    html += '<td><select class="cell-select" onchange="onFieldInput(this,\'' + path + '\',\'unit\',false)">' + unitOptions + '</select></td>';
+    html += '<td><select class="cell-select"' + dis
+      + (editable ? ' onchange="onFieldInput(this,\'' + path + '\',\'unit\',false)"' : '')
+      + '>' + unitOptions + '</select></td>';
 
     // 적용시작일
     html += '<td><input type="date" class="cell-input" value="' + esc(item.effective_start || '') + '"'
-      + ' oninput="onFieldInput(this,\'' + path + '\',\'effective_start\',false)" style="font-size:0.78rem;"></td>';
+      + dis
+      + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'effective_start\',false)"' : '')
+      + ' style="font-size:0.78rem;"></td>';
 
     // 적용종료일
     html += '<td><input type="date" class="cell-input" value="' + esc(item.effective_end || '9999-12-31') + '"'
-      + ' oninput="onFieldInput(this,\'' + path + '\',\'effective_end\',false)" style="font-size:0.78rem;"></td>';
+      + dis
+      + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'effective_end\',false)"' : '')
+      + ' style="font-size:0.78rem;"></td>';
 
     // 분류
     html += '<td class="text-center"><span style="font-size:0.75rem;color:var(--lg-gray-500);">' + esc(item.category || '') + '</span></td>';
 
     // 대치품
-    html += '<td class="text-center"><span class="sub-badge" onclick="openSubstituteModal(\'' + path + '\')">' + subLabel + '</span></td>';
+    html += '<td class="text-center"><span class="sub-badge"' + (editable ? ' onclick="openSubstituteModal(\'' + path + '\')"' : '') + ' style="' + disStyle + '">' + subLabel + '</span></td>';
 
     // 비고
     html += '<td><input type="text" class="cell-input" value="' + esc(item.remark) + '"'
-      + ' oninput="onFieldInput(this,\'' + path + '\',\'remark\',false)"></td>';
+      + dis
+      + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'remark\',false)"' : '')
+      + '></td>';
 
     // 작업 (자식추가 + 삭제)
-    html += '<td class="text-center" style="white-space:nowrap;">'
-      + '<span class="action-icon add-child" onclick="addChildItem(\'' + path + '\')" title="하위 자재 추가"><i class="bi bi-plus"></i></span>'
-      + ' <span class="action-icon del" onclick="removeItem(\'' + path + '\')" title="삭제"><i class="bi bi-trash3"></i></span>'
-      + '</td>';
+    html += '<td class="text-center" style="white-space:nowrap;">';
+    if (editable) {
+      html += '<span class="action-icon add-child" onclick="addChildItem(\'' + path + '\')" title="하위 자재 추가"><i class="bi bi-plus"></i></span>'
+        + ' <span class="action-icon del" onclick="removeItem(\'' + path + '\')" title="삭제"><i class="bi bi-trash3"></i></span>';
+    }
+    html += '</td>';
 
     html += '</tr>';
 
-    // 재귀 자식 렌더링
+    // 재귀 자식 렌더링 — 이 아이템의 체크아웃 상태를 자식에 전달
     if (hasChildren) {
+      var thisCheckedOut = item.child_bom_checked_out || 0;
       item.children.forEach(function(child, ci) {
-        html += renderTreeRow(child, path + '-' + ci, level + 1, path);
+        html += renderTreeRow(child, path + '-' + ci, level + 1, path, thisCheckedOut);
       });
     }
 
@@ -935,9 +973,9 @@
     .catch(function(err){alert('새 버전 생성 오류: '+err.message);});
   };
 
+  // ── 루트 BOM Check-Out/In ──
   window.checkOut = async function() {
-    if (!confirm('Check-Out 하시겠습니까?\n하위 BOM도 함께 체크아웃됩니다.')) return;
-    // 먼저 저장
+    if (!confirm('이 BOM을 Check-Out 하시겠습니까?')) return;
     await saveBomSilent();
     var res = await fetch('/bom/edit/' + PART_ID + '/checkout', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -949,7 +987,7 @@
   };
 
   window.checkIn = async function() {
-    if (!confirm('Check-In 하시겠습니까?\n하위 BOM도 함께 체크인되며 각각 Iteration이 증가합니다.')) return;
+    if (!confirm('이 BOM을 Check-In 하시겠습니까?\nIteration이 증가합니다.')) return;
     await saveBomSilent();
     var res = await fetch('/bom/edit/' + PART_ID + '/checkin', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -961,6 +999,42 @@
       var url = '/bom/edit/' + PART_ID + '?bom_type=' + encodeURIComponent(BOM_TYPE) + '&version=' + data.version;
       if (IS_FRAME) url += '&frame=1';
       location.href = url;
+    } else alert(data.error || '오류 발생');
+  };
+
+  // ── 개별 자재 Check-Out/In ──
+  window.itemCheckOut = async function(path, childPartId) {
+    if (!confirm('이 자재의 BOM을 Check-Out 하시겠습니까?')) return;
+    var item = getItemByPath(path);
+    if (!item) return;
+    var version = item.child_bom_version || '1.0';
+    var res = await fetch('/bom/edit/' + childPartId + '/checkout', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({bom_type:BOM_TYPE, version:version})
+    });
+    var data = await res.json();
+    if (data.ok) {
+      item.child_bom_checked_out = 1;
+      item.child_bom_checked_out_by = data.checked_out_by || '';
+      renderBomTable();
+    } else alert(data.error || '오류 발생');
+  };
+
+  window.itemCheckIn = async function(path, childPartId) {
+    if (!confirm('이 자재의 BOM을 Check-In 하시겠습니까?\nIteration이 증가합니다.')) return;
+    var item = getItemByPath(path);
+    if (!item) return;
+    var version = item.child_bom_version || '1.0';
+    var res = await fetch('/bom/edit/' + childPartId + '/checkin', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({bom_type:BOM_TYPE, version:version})
+    });
+    var data = await res.json();
+    if (data.ok) {
+      item.child_bom_checked_out = 0;
+      item.child_bom_checked_out_by = null;
+      item.child_bom_version = data.version;
+      renderBomTable();
     } else alert(data.error || '오류 발생');
   };
 

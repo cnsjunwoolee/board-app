@@ -705,8 +705,10 @@ async def bom_checkout(part_id: int, request: Request, db: Session = Depends(get
     current_operator = getattr(getattr(request, 'state', None), 'current_operator', None)
     operator_name = current_operator.name if current_operator else "알 수 없음"
 
-    # 재귀 체크아웃 (하위 BOM 포함)
-    _cascade_checkout(part_id, bom_type, operator_name, db)
+    # 개별 체크아웃 (해당 BOM만)
+    bom.checked_out = 1
+    bom.checked_out_by = operator_name
+    bom.status = "체크아웃"
     db.commit()
     return JSONResponse(content={"ok": True, "version": bom.version, "checked_out_by": operator_name})
 
@@ -727,8 +729,38 @@ async def bom_checkin(part_id: int, request: Request, db: Session = Depends(get_
     if not bom.checked_out:
         return JSONResponse(status_code=400, content={"error": "체크아웃 상태가 아닙니다."})
 
-    # 재귀 체크인 (하위 BOM 포함, 각각 iteration 증가)
-    new_version = _cascade_checkin(part_id, bom_type, db)
+    # 개별 체크인 (해당 BOM만, iteration 증가)
+    parts = bom.version.split(".")
+    major = parts[0]
+    iteration = int(parts[1]) + 1 if len(parts) > 1 else 1
+    new_version = f"{major}.{iteration}"
+
+    new_bom = BOMHeader(
+        part_id=part_id, bom_type=bom_type, version=new_version,
+        effective_date=bom.effective_date, status="작성중", checked_out=0,
+    )
+    db.add(new_bom)
+    db.flush()
+
+    # 기존 아이템 복사
+    old_items = db.query(BOMItem).filter(BOMItem.bom_id == bom.id)\
+        .options(joinedload(BOMItem.substitutes)).order_by(BOMItem.seq_no).all()
+    for old_item in old_items:
+        ni = BOMItem(
+            bom_id=new_bom.id, child_part_id=old_item.child_part_id,
+            quantity=old_item.quantity, unit=old_item.unit, seq_no=old_item.seq_no,
+            effective_start=old_item.effective_start, effective_end=old_item.effective_end,
+            remark=old_item.remark,
+        )
+        db.add(ni)
+        db.flush()
+        for s in old_item.substitutes:
+            db.add(BOMSubstitute(
+                bom_item_id=ni.id, substitute_part_id=s.substitute_part_id,
+                priority=s.priority, remark=s.remark or "",
+            ))
+
+    bom.checked_out = 0
     db.commit()
     return JSONResponse(content={"ok": True, "version": new_version})
 
