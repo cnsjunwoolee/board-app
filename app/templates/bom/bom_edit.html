@@ -88,6 +88,9 @@
   /* 편집 불가 행 (부모 미체크아웃) */
   tr.row-disabled td { background: #f0f0f0 !important; color: #999; }
   tr.row-disabled input:disabled, tr.row-disabled select:disabled { background: #e9ecef; color: #999; }
+  /* disabled 행도 선택 시 파란색 표시 */
+  tr.row-disabled.selected-row td { background: #e0e8f0 !important; }
+  tr.row-disabled.selected-row td:first-child { border-left: 4px solid #2563eb !important; }
 
   /* 수정된 행 표시 */
   tr.row-modified td:first-child { border-left: 4px solid #f59e0b !important; }
