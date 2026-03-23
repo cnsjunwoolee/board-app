@@ -83,6 +83,7 @@
 
   /* 선택된 행 하이라이트 */
   tr.selected-row td { background: #d0e8ff !important; outline: none; }
+  tr.selected-row td:first-child { border-left: 4px solid #2563eb !important; }
 
   tr.search-highlight td { background: #fffde7 !important; }
   .empty-bom {
@@ -551,23 +552,18 @@
     if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
   };
 
-  // ── 자재 추가 (선택된 행의 하위 또는 Level 1) ──
+  // ── 자재 추가 (선택된 행의 바로 아래 동일 레벨에 추가) ──
   window.addItem = function() {
     if (selectedPath !== null) {
-      // 선택된 행이 있으면 그 하위에 추가
-      var item = getItemByPath(selectedPath);
-      if (item) {
-        if (!item.children) item.children = [];
-        var level = selectedPath.split('-').length + 1;
-        item.children.push(newEmptyItem(level));
-        item.has_own_bom = true;
-        collapsedSet.delete(selectedPath);
-        renderBomTable();
-        setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
-        return;
-      }
+      var parentArr = getParentArray(selectedPath);
+      var idx = getIndexInParent(selectedPath);
+      var level = selectedPath.split('-').length;
+      parentArr.splice(idx + 1, 0, newEmptyItem(level));
+      renderBomTable();
+      setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
+      return;
     }
-    // 선택된 행이 없으면 Level 1에 추가
+    // 선택된 행이 없으면 Level 1 맨 끝에 추가
     bomItems.push(newEmptyItem(1));
     renderBomTable();
     setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
