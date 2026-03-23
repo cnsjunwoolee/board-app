@@ -572,6 +572,18 @@
     if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
   };
 
+  // ── 새로 추가된 행에 포커스 + 스크롤 ──
+  function focusRow(path) {
+    setTimeout(function() {
+      var row = document.querySelector('tr[data-tree-id="' + path + '"]');
+      if (row) {
+        var input = row.querySelector('.pn-input');
+        if (input) input.focus();
+        row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }, 50);
+  }
+
   // ── 자재 추가 (선택된 행의 하위 레벨에 추가) ──
   window.addItem = function() {
     if (selectedPath !== null) {
@@ -582,15 +594,17 @@
         item.children.push(newEmptyItem(level));
         item.has_own_bom = true;
         collapsedSet.delete(selectedPath);
+        var newPath = selectedPath + '-' + (item.children.length - 1);
         renderBomTable();
-        setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
+        focusRow(newPath);
         return;
       }
     }
     // 선택된 행이 없으면 Level 1 맨 끝에 추가
     bomItems.push(newEmptyItem(1));
+    var newPath = String(bomItems.length - 1);
     renderBomTable();
-    setTimeout(function(){ var inputs = document.querySelectorAll('.pn-input'); if(inputs.length) inputs[inputs.length-1].focus(); }, 50);
+    focusRow(newPath);
   };
 
   // ── 하위 자재 추가 ──
@@ -603,7 +617,9 @@
     item.has_own_bom = true;
     // 펼치기
     collapsedSet.delete(path);
+    var newPath = path + '-' + (item.children.length - 1);
     renderBomTable();
+    focusRow(newPath);
   };
 
   function newEmptyItem(level) {
