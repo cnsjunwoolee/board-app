@@ -158,7 +158,7 @@
         </tr>
         {# 대치품 행 - 본자재 바로 밑에 #}
         {% for sub in node.item.substitutes %}
-        <tr data-row-id="{{ row_id }}-sub-{{ sub.id }}" data-parent-row="{{ parent_row_id }}" data-sub-of="{{ node.item.id }}" data-level="{{ node.level }}" class="tree-row-sub tree-data-row">
+        <tr data-row-id="{{ row_id }}-sub-{{ sub.id }}" data-parent-row="{{ row_id }}" data-sub-of="{{ node.item.id }}" data-level="{{ node.level }}" class="tree-row-sub tree-data-row">
           <td class="text-center text-muted"></td>
           <td style="padding-left: {{ (node.level) * 24 + 16 }}px; white-space:nowrap;">
             <span style="width:16px;display:inline-block;"></span>
@@ -217,50 +217,38 @@ function queryByDate() {
   window.location.href = url.toString();
 }
 
-// Tree 접기/펼치기 — 직접 자식 행만 반환 (대치품 포함)
-function getDirectChildren(rowId) {
-  const rows = [];
-  document.querySelectorAll('#bomTreeBody tr[data-parent-row="' + rowId + '"]').forEach(function(tr) {
-    rows.push(tr);
-  });
-  return rows;
+// Tree 접기/펼치기
+function getChildRows(rowId) {
+  return document.querySelectorAll('#bomTreeBody tr[data-parent-row="' + rowId + '"]');
 }
 
-// 모든 자손 행 반환 (재귀)
-function getAllDescendants(rowId) {
-  const rows = [];
-  getDirectChildren(rowId).forEach(function(tr) {
-    rows.push(tr);
-    var childRowId = tr.dataset.rowId;
-    if (childRowId && !tr.dataset.subOf) {
-      getAllDescendants(childRowId).forEach(function(d) { rows.push(d); });
-    }
+function hideAllDescendants(rowId) {
+  getChildRows(rowId).forEach(function(tr) {
+    tr.style.display = 'none';
+    var childId = tr.dataset.rowId;
+    if (childId) hideAllDescendants(childId);
   });
-  return rows;
 }
 
 function toggleNode(rowId) {
   var mainRow = document.querySelector('tr[data-row-id="' + rowId + '"]');
-  var toggle = mainRow ? mainRow.querySelector('.tree-toggle') : null;
+  if (!mainRow) return;
+  var toggle = mainRow.querySelector('.tree-toggle');
   if (!toggle) return;
   var isOpen = toggle.textContent.trim() === '▼';
 
   if (isOpen) {
-    // 접기: 모든 자손 숨김
     toggle.textContent = '▶';
-    getAllDescendants(rowId).forEach(function(r) { r.style.display = 'none'; });
+    hideAllDescendants(rowId);
   } else {
-    // 펼치기: 직접 자식만 보이게 (하위 토글은 접힌 상태 유지)
     toggle.textContent = '▼';
-    getDirectChildren(rowId).forEach(function(r) {
-      r.style.display = '';
-      // 직접 자식의 토글을 접힌 상태로 설정
-      var childToggle = r.querySelector('.tree-toggle');
-      if (childToggle) childToggle.textContent = '▶';
-      // 직접 자식의 자손은 숨김 유지
-      var childRowId = r.dataset.rowId;
-      if (childRowId && !r.dataset.subOf) {
-        getAllDescendants(childRowId).forEach(function(d) { d.style.display = 'none'; });
+    // 직접 자식만 표시, 하위는 접힌 상태 유지
+    getChildRows(rowId).forEach(function(tr) {
+      tr.style.display = '';
+      var childToggle = tr.querySelector('.tree-toggle');
+      if (childToggle) {
+        childToggle.textContent = '▶';
+        hideAllDescendants(tr.dataset.rowId);
       }
     });
   }
