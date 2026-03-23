@@ -155,11 +155,61 @@
   function renderTabs() {
     const bar = document.getElementById('mdiTabBar');
     bar.innerHTML = tabs.map(t => `
-      <div class="mdi-tab ${t.id === activeTabId ? 'active' : ''}" onclick="activateTab('${t.id}')">
+      <div class="mdi-tab ${t.id === activeTabId ? 'active' : ''}"
+           onclick="activateTab('${t.id}')"
+           ${t.closeable ? `draggable="true" data-tab-id="${t.id}"` : ''}>
         <span class="tab-title">${t.title}</span>
         ${t.closeable ? `<span class="tab-close" onclick="closeTab('${t.id}', event)">&#215;</span>` : ''}
       </div>
     `).join('');
+    // 드래그 이벤트 바인딩
+    bar.querySelectorAll('.mdi-tab[draggable]').forEach(el => {
+      el.addEventListener('dragstart', onTabDragStart);
+      el.addEventListener('dragend', onTabDragEnd);
+    });
+  }
+
+  // ── 탭 드래그 → 별도 창 분리 ──
+  let dragTabId = null;
+  let dragStartY = 0;
+
+  function onTabDragStart(e) {
+    dragTabId = e.currentTarget.dataset.tabId;
+    dragStartY = e.clientY;
+    e.dataTransfer.setData('text/plain', dragTabId);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onTabDragEnd(e) {
+    if (!dragTabId) return;
+    const tabBar = document.getElementById('mdiTabBar');
+    const barRect = tabBar.getBoundingClientRect();
+    // 탭바 밖으로 충분히 벗어나면 (50px 이상) 별도 창으로 분리
+    if (e.clientY > barRect.bottom + 50 || e.clientY < barRect.top - 50 ||
+        e.clientX < barRect.left - 50 || e.clientX > barRect.right + 50) {
+      const tab = tabs.find(t => t.id === dragTabId);
+      if (tab) {
+        const fullUrl = tab.url;
+        const w = Math.round(window.innerWidth * 0.8);
+        const h = Math.round(window.innerHeight * 0.8);
+        const left = Math.round(e.screenX - w / 2);
+        const top = Math.round(e.screenY - h / 2);
+        window.open(fullUrl, '_blank', 'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top);
+        // 원래 탭 닫기
+        const idx = tabs.findIndex(t => t.id === dragTabId);
+        if (idx >= 0) {
+          tabs.splice(idx, 1);
+          if (activeTabId === dragTabId) {
+            const nextTab = tabs[Math.max(0, idx - 1)];
+            if (nextTab) activateTab(nextTab.id);
+          }
+          renderTabs();
+          const panel = document.getElementById('panel-' + dragTabId);
+          if (panel) panel.remove();
+        }
+      }
+    }
+    dragTabId = null;
   }
 
   function isMobile() { return window.innerWidth <= 767; }

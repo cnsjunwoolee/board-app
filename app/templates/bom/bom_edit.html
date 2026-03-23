@@ -342,13 +342,14 @@
     }
   }
 
-  // 이벤트 위임: tbody 클릭 시 가장 가까운 tr의 data-tree-id로 선택
+  // 이벤트 위임: tbody mousedown 시 가장 가까운 tr의 data-tree-id로 선택
+  // mousedown을 사용하여 input focus 전에 행 선택이 먼저 처리되도록 함
   function initRowSelection() {
     var tbody = document.getElementById('bomEditorBody');
     if (tbody) {
-      tbody.addEventListener('click', function(e) {
-        // 버튼, 토글, 드래그 핸들은 제외
-        if (e.target.closest('button, .tree-toggle-edit, .drag-handle')) return;
+      tbody.addEventListener('mousedown', function(e) {
+        // 버튼, 토글, 드래그 핸들, 배지는 제외
+        if (e.target.closest('button, .tree-toggle-edit, .drag-handle, .badge')) return;
         var tr = e.target.closest('tr[data-tree-id]');
         if (tr && tr.getAttribute('data-tree-id') !== 'root') {
           selectRow(tr.getAttribute('data-tree-id'));

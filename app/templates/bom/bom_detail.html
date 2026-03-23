@@ -32,7 +32,7 @@
       <span class="text-muted" style="font-size:0.78rem;">적용일: {{ bom_header.effective_date }}</span>
       {% endif %}
       {% endif %}
-      <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}{% if bom_header %}&version={{ bom_header.version }}{% endif %}" class="btn btn-primary btn-sm" target="_blank">편집</a>
+      <a href="#" class="btn btn-primary btn-sm" onclick="openEditTab({{ part.id }}, '{{ bom_type }}', '{{ bom_header.version if bom_header else '' }}', '{{ part.part_number }}'); return false;">편집</a>
       <a href="/bom/list" class="btn btn-outline-secondary btn-sm">목록</a>
     </div>
   </div>
@@ -115,7 +115,7 @@
           <td>{{ part.category or '-' }}</td>
           <td></td>
           <td class="text-center">
-            <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}{% if bom_header %}&version={{ bom_header.version }}{% endif %}" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;" target="_blank">편집</a>
+            <a href="#" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;" onclick="event.stopPropagation(); openEditTab({{ part.id }}, '{{ bom_type }}', '{{ bom_header.version if bom_header else '' }}', '{{ part.part_number }}'); return false;">편집</a>
           </td>
         </tr>
 
@@ -150,7 +150,7 @@
           <td>{{ node.item.remark or '' }}</td>
           <td class="text-center">
             {% if node.children %}
-            <a href="/bom/edit/{{ node.item.child_part_id }}?bom_type={{ bom_type }}" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;" onclick="event.stopPropagation();" target="_blank">편집</a>
+            <a href="#" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;" onclick="event.stopPropagation(); openEditTab({{ node.item.child_part_id }}, '{{ bom_type }}', '', '{{ node.item.child_part.part_number }}'); return false;">편집</a>
             {% else %}
             <span class="text-muted" style="font-size:0.72rem;">-</span>
             {% endif %}
@@ -191,17 +191,30 @@
   {% elif bom_header %}
   <div class="text-center py-5 text-muted">
     <p>등록된 BOM 구성이 없습니다.</p>
-    <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}" class="btn btn-primary btn-sm" target="_blank">BOM 편집하기</a>
+    <a href="#" class="btn btn-primary btn-sm" onclick="openEditTab({{ part.id }}, '{{ bom_type }}', '', '{{ part.part_number }}'); return false;">BOM 편집하기</a>
   </div>
   {% else %}
   <div class="text-center py-5 text-muted">
     <p>등록된 BOM이 없습니다. BOM을 생성하시겠습니까?</p>
-    <a href="/bom/edit/{{ part.id }}?bom_type={{ bom_type }}" class="btn btn-primary btn-sm" target="_blank">BOM 생성</a>
+    <a href="#" class="btn btn-primary btn-sm" onclick="openEditTab({{ part.id }}, '{{ bom_type }}', '', '{{ part.part_number }}'); return false;">BOM 생성</a>
   </div>
   {% endif %}
 </div>
 
 <script>
+// BOM 편집 탭 열기 (부모 MDI에서 탭 추가)
+function openEditTab(partId, bomType, version, partNumber) {
+  var url = '/bom/edit/' + partId + '?bom_type=' + encodeURIComponent(bomType);
+  if (version) url += '&version=' + encodeURIComponent(version);
+  var title = 'BOM 편집 - ' + partNumber;
+  if (window.parent && window.parent.openTab) {
+    window.parent.openTab(url, title);
+  } else {
+    // 부모 MDI가 없으면 새 창으로
+    window.open(url, '_blank');
+  }
+}
+
 function changeVersion(ver) {
   const url = new URL(window.location);
   url.searchParams.set('version', ver);
