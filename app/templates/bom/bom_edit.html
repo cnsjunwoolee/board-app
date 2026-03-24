@@ -178,6 +178,7 @@
         <tr>
           <th style="width:36px;"></th>
           <th style="width:30px;" class="text-center">Lv</th>
+          <th style="width:55px;" class="text-center">Seq</th>
           <th style="min-width:140px;">부품번호</th>
           <th style="min-width:140px;">설명</th>
           <th style="min-width:90px;">Spec</th>
@@ -414,6 +415,8 @@
     emptyMsg.style.display = 'none';
     countLabel.textContent = '총 ' + countAllItems(bomItems) + '개 자재';
 
+    // seq_no 기준 정렬
+    bomItems.sort(function(a, b) { return (a.seq_no || 0) - (b.seq_no || 0); });
     bomItems.forEach(function(item, idx) {
       html += renderTreeRow(item, String(idx), 1, 'root', ROOT_CHECKED_OUT);
     });
@@ -428,6 +431,7 @@
       + (hasChildren ? '<span class="tree-toggle-edit" onclick="toggleEditNode(\'root\')">' + (isCollapsed ? '&#9654;' : '&#9660;') + '</span>' : '')
       + '</td>'
       + '<td class="text-center" style="font-size:0.78rem;">0</td>'
+      + '<td class="text-center" style="font-size:0.78rem;">-</td>'
       + '<td style="white-space:nowrap;font-family:\'Courier New\',monospace;color:var(--lg-brand);">' + esc(ROOT_PART.part_number) + '</td>'
       + '<td>' + esc(ROOT_PART.description) + '</td>'
       + '<td style="font-size:0.78rem;">' + esc(ROOT_PART.spec) + '</td>'
@@ -485,6 +489,13 @@
 
     // Level
     html += '<td class="text-center" style="font-size:0.78rem;">' + level + '</td>';
+
+    // Seq
+    html += '<td><input type="number" class="cell-input text-center" value="' + (item.seq_no || 0) + '" min="0" step="10"'
+      + ' style="font-size:0.78rem;width:100%;"'
+      + dis
+      + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'seq_no\',true)"' : '')
+      + '></td>';
 
     // 부품번호 (토글 + 인덴트 + 체크아웃 배지)
     html += '<td style="padding-left:' + (level * 20) + 'px; white-space:nowrap;">';
@@ -549,9 +560,11 @@
 
     html += '</tr>';
 
-    // 재귀 자식 렌더링 — 이 아이템의 체크아웃 상태를 자식에 전달
+    // 재귀 자식 렌더링 — seq_no 기준 정렬 후 렌더링
     if (hasChildren) {
       var thisCheckedOut = item.child_bom_checked_out || 0;
+      // seq_no 기준으로 배열 자체를 정렬
+      item.children.sort(function(a, b) { return (a.seq_no || 0) - (b.seq_no || 0); });
       item.children.forEach(function(child, ci) {
         html += renderTreeRow(child, path + '-' + ci, level + 1, path, thisCheckedOut);
       });
@@ -675,7 +688,7 @@
         }
         if (!item.children) item.children = [];
         var level = selectedPath.split('-').length + 1;
-        item.children.push(newEmptyItem(level));
+        item.children.push(newEmptyItem(level, item.children));
         item.has_own_bom = true;
         // 신규 BOM은 편집 가능 상태로 설정
         if (!item.child_bom_checked_out) item.child_bom_checked_out = 1;
@@ -691,7 +704,7 @@
       alert('루트 BOM이 Check-In 상태입니다.\nCheck-Out 후 자재를 추가할 수 있습니다.');
       return;
     }
-    bomItems.push(newEmptyItem(1));
+    bomItems.push(newEmptyItem(1, bomItems));
     var newPath = String(bomItems.length - 1);
     renderBomTable();
     focusRow(newPath);
@@ -708,7 +721,7 @@
     }
     if (!item.children) item.children = [];
     var level = parseInt(path.split('-').length) + 1;
-    item.children.push(newEmptyItem(level));
+    item.children.push(newEmptyItem(level, item.children));
     item.has_own_bom = true;
     // 신규 BOM은 편집 가능 상태로 설정
     if (!item.child_bom_checked_out) item.child_bom_checked_out = 1;
@@ -719,11 +732,19 @@
     focusRow(newPath);
   };
 
-  function newEmptyItem(level) {
+  function getNextSeqNo(siblings) {
+    var max = 0;
+    (siblings || []).forEach(function(s) {
+      if (s.seq_no > max) max = s.seq_no;
+    });
+    return max + 10;
+  }
+
+  function newEmptyItem(level, siblings) {
     return {
       id: null, bom_id: null, child_part_id: null,
       part_number: '', description: '', spec: '', category: '',
-      quantity: 1, unit: 'EA', seq_no: 0,
+      quantity: 1, unit: 'EA', seq_no: getNextSeqNo(siblings),
       effective_start: '', effective_end: '9999-12-31',
       remark: '', level: level, has_own_bom: false,
       children: [], substitutes: []
@@ -859,7 +880,7 @@
           child_part_id: item.child_part_id,
           quantity: parseFloat(item.quantity) || 1,
           unit: item.unit || 'EA',
-          seq_no: idx,
+          seq_no: item.seq_no || ((idx + 1) * 10),
           effective_start: item.effective_start || null,
           effective_end: item.effective_end || '9999-12-31',
           remark: item.remark || '',

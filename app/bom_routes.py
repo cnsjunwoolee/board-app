@@ -205,7 +205,7 @@ def _save_items_to_bom(items_data, bom_header, db):
             child_part_id=child_part_id,
             quantity=float(item_data.get("quantity", 1)),
             unit=item_data.get("unit", "EA") or "EA",
-            seq_no=idx,
+            seq_no=int(item_data.get("seq_no", (idx + 1) * 10)),
             effective_start=item_data.get("effective_start") or None,
             effective_end=item_data.get("effective_end") or "9999-12-31",
             remark=item_data.get("remark", "") or "",
