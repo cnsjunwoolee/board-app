@@ -1,0 +1,132 @@
+{% extends "layout_admin.html" %}
+
+{% block page_title_heading %}{% if screen %}화면 수정{% else %}화면 추가{% endif %}{% endblock %}
+{% block page_breadcrumb %}{% if screen %}수정{% else %}추가{% endif %}{% endblock %}
+
+{% block admin_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">{% if screen %}화면 수정{% else %}화면 추가{% endif %}</h2>
+  <a href="/admin/screens" class="btn btn-outline-secondary btn-sm">목록으로</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger py-2" style="font-size:0.85rem;">{{ error }}</div>
+{% endif %}
+
+<form method="post"
+      action="{% if screen %}/admin/screens/{{ screen.id }}/edit{% else %}/admin/screens{% endif %}">
+
+  <div class="card">
+    <div class="card-body">
+
+      <!-- 화면 ID -->
+      <div class="form-row-h">
+        <div class="form-lbl">화면 ID <span class="text-danger">*</span></div>
+        <div class="form-val">
+          <input type="text" name="screen_id" class="form-control form-control-sm"
+                 value="{{ screen.screen_id if screen else '' }}"
+                 {% if screen %}readonly{% endif %}
+                 required placeholder="SCR-BOM-LIST" style="max-width:250px;" />
+          <small class="text-muted">영문 대문자, 하이픈 조합 (예: SCR-BOM-LIST)</small>
+        </div>
+      </div>
+
+      <!-- 화면명 -->
+      <div class="form-row-h">
+        <div class="form-lbl">화면명 <span class="text-danger">*</span></div>
+        <div class="form-val">
+          <input type="text" name="name" class="form-control form-control-sm"
+                 value="{{ screen.name if screen else '' }}" required style="max-width:300px;" />
+        </div>
+      </div>
+
+      <!-- 섹션 -->
+      <div class="form-row-h">
+        <div class="form-lbl">섹션 <span class="text-danger">*</span></div>
+        <div class="form-val">
+          <select name="section" class="form-select form-select-sm" required style="max-width:200px;">
+            {% for code, label in section_labels.items() %}
+            <option value="{{ code }}" {% if screen and screen.section == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- URL 패턴 -->
+      <div class="form-row-h">
+        <div class="form-lbl">URL 패턴</div>
+        <div class="form-val">
+          <input type="text" name="url_pattern" class="form-control form-control-sm"
+                 value="{{ screen.url_pattern if screen else '' }}" placeholder="/bom/list" style="max-width:350px;" />
+        </div>
+      </div>
+
+      <!-- 설명 -->
+      <div class="form-row-h">
+        <div class="form-lbl">설명</div>
+        <div class="form-val">
+          <textarea name="description" class="form-control form-control-sm" rows="2"
+                    style="max-width:500px;">{{ screen.description if screen else '' }}</textarea>
+        </div>
+      </div>
+
+      <!-- 정렬 순서 -->
+      <div class="form-row-h">
+        <div class="form-lbl">정렬 순서</div>
+        <div class="form-val">
+          <input type="number" name="sort_order" class="form-control form-control-sm"
+                 value="{{ screen.sort_order if screen else 0 }}" style="max-width:100px;" />
+          <small class="text-muted">낮은 숫자가 먼저 표시됩니다</small>
+        </div>
+      </div>
+
+      <!-- 접근 권한 -->
+      <div class="form-row-h">
+        <div class="form-lbl">접근 권한</div>
+        <div class="form-val">
+          <select name="required_permission" class="form-select form-select-sm" style="max-width:200px;">
+            <option value="">없음 (모든 사용자)</option>
+            <option value="member" {% if screen and screen.required_permission == 'member' %}selected{% endif %}>회원모집 (member)</option>
+            <option value="board" {% if screen and screen.required_permission == 'board' %}selected{% endif %}>게시판 (board)</option>
+            <option value="admin" {% if screen and screen.required_permission == 'admin' %}selected{% endif %}>관리 (admin)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 메뉴 표시 -->
+      <div class="form-row-h">
+        <div class="form-lbl">메뉴 표시</div>
+        <div class="form-val">
+          <select name="show_in_menu" class="form-select form-select-sm" style="max-width:150px;">
+            <option value="1" {% if screen and screen.show_in_menu %}selected{% endif %}>표시</option>
+            <option value="0" {% if not screen or not screen.show_in_menu %}selected{% endif %}>숨김</option>
+          </select>
+          <small class="text-muted">사이드바 메뉴에 표시할지 여부</small>
+        </div>
+      </div>
+
+      <!-- 상태 -->
+      {% if screen %}
+      <div class="form-row-h">
+        <div class="form-lbl">상태</div>
+        <div class="form-val">
+          <select name="is_active" class="form-select form-select-sm" style="max-width:150px;">
+            <option value="1" {% if screen.is_active %}selected{% endif %}>활성</option>
+            <option value="0" {% if not screen.is_active %}selected{% endif %}>비활성</option>
+          </select>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+    <div class="card-footer d-flex gap-2 justify-content-end">
+      <a href="/admin/screens" class="btn btn-outline-secondary">취소</a>
+      <button type="submit" class="btn btn-primary">
+        {% if screen %}수정 완료{% else %}등록{% endif %}
+      </button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}

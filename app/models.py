@@ -161,3 +161,54 @@ class BOMSubstitute(Base):
 
     bom_item = relationship("BOMItem", back_populates="substitutes")
     substitute_part = relationship("Part")
+
+
+# ── 화면 관리 모델 ──────────────────────────────────────────────────────────────
+
+class Screen(Base):
+    __tablename__ = "screens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    screen_id = Column(String(30), unique=True, nullable=False)   # 'SCR-BOM-LIST' 등
+    name = Column(String(100), nullable=False)                     # '부품조회'
+    section = Column(String(30), nullable=False)                   # 'member','board','bom','admin'
+    url_pattern = Column(String(200))                              # '/bom/parts'
+    description = Column(String(500))
+    sort_order = Column(Integer, default=0)                        # 메뉴 정렬 순서
+    is_active = Column(Integer, default=1)                         # 1=활성, 0=비활성
+    show_in_menu = Column(Integer, default=0)                      # 1=사이드바 메뉴에 표시
+    required_permission = Column(String(50))                       # 접근에 필요한 menu_code
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    audit_logs = relationship("ScreenAuditLog", back_populates="screen", cascade="all, delete-orphan",
+                              order_by="ScreenAuditLog.created_at.desc()")
+
+
+class ScreenAuditLog(Base):
+    __tablename__ = "screen_audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    screen_id = Column(Integer, ForeignKey("screens.id"), nullable=False)
+    action = Column(String(20), nullable=False)    # 'CREATE', 'UPDATE', 'DELETE'
+    field_name = Column(String(50))                 # 변경된 필드명
+    old_value = Column(Text)
+    new_value = Column(Text)
+    changed_by = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    screen = relationship("Screen", back_populates="audit_logs")
+
+
+class MenuSection(Base):
+    """상단 헤더 메뉴 섹션 (회원모집, 게시판, BOM, 관리 등)"""
+    __tablename__ = "menu_sections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(30), unique=True, nullable=False)   # 'member', 'board', 'bom', 'admin'
+    name = Column(String(50), nullable=False)                 # '회원모집', '게시판' 등
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Integer, default=1)
+    required_permission = Column(String(50))                  # 접근에 필요한 menu_code
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

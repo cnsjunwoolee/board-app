@@ -1,0 +1,61 @@
+{% extends "layout_admin.html" %}
+
+{% block page_title_heading %}변경 이력{% endblock %}
+{% block page_breadcrumb %}화면 관리 &gt; {{ screen.screen_id }} 이력{% endblock %}
+
+{% block admin_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="h5 mb-1">변경 이력</h2>
+    <div class="text-muted" style="font-size:0.82rem;">
+      <code>{{ screen.screen_id }}</code> &mdash; {{ screen.name }}
+    </div>
+  </div>
+  <a href="/admin/screens" class="btn btn-outline-secondary btn-sm">목록으로</a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:0.82rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:50px" class="text-center">No</th>
+          <th style="width:80px" class="text-center">구분</th>
+          <th style="width:100px">변경 필드</th>
+          <th>이전 값</th>
+          <th>변경 값</th>
+          <th style="width:80px" class="text-center">변경자</th>
+          <th style="width:140px" class="text-center">일시</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td class="text-center text-muted">{{ loop.index }}</td>
+          <td class="text-center">
+            {% if log.action == 'CREATE' %}
+            <span class="badge bg-success" style="font-size:0.7rem;">생성</span>
+            {% elif log.action == 'UPDATE' %}
+            <span class="badge bg-primary" style="font-size:0.7rem;">수정</span>
+            {% elif log.action == 'DELETE' %}
+            <span class="badge bg-danger" style="font-size:0.7rem;">삭제</span>
+            {% else %}
+            <span class="badge bg-secondary" style="font-size:0.7rem;">{{ log.action }}</span>
+            {% endif %}
+          </td>
+          <td>{{ log.field_name or '-' }}</td>
+          <td><small class="text-muted">{{ log.old_value or '-' }}</small></td>
+          <td><small>{{ log.new_value or '-' }}</small></td>
+          <td class="text-center">{{ log.changed_by }}</td>
+          <td class="text-center text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">변경 이력이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

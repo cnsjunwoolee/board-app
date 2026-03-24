@@ -10,6 +10,12 @@
 </head>
 <body class="mdi-frame">
   {% block frame_content %}{% endblock %}
+
+  {% set _scr_id = get_screen_id(request) if get_screen_id is defined else none %}
+  {% if _scr_id %}
+  <div class="screen-id-badge" title="화면 ID: {{ _scr_id }}">{{ _scr_id }}</div>
+  {% endif %}
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   {% block extra_js %}{% endblock %}
 

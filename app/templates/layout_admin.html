@@ -3,10 +3,12 @@
 {% block sidebar %}
 <div class="sidebar-section-title">관리</div>
 <nav class="sidebar-nav">
-  <a href="/admin/operators"
-     class="sidebar-item {% if request.url.path.startswith('/admin/operators') %}active{% endif %}">
-    <span>운영진 관리</span>
+  {% for item in menu_sidebar_items('admin') %}
+  <a href="{{ item.url_pattern }}"
+     class="sidebar-item {% if request.url.path.startswith(item.url_pattern) %}active{% endif %}">
+    <span>{{ item.name }}</span>
   </a>
+  {% endfor %}
 </nav>
 {% endblock %}
 

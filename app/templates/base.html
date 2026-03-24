@@ -15,10 +15,12 @@
     <button id="sidebarToggle" class="header-toggle">&#9776;</button>
     <a href="#" class="header-brand" onclick="openTab('/home','Home');return false;">Become a friend</a>
     <nav class="header-nav">
-      <a href="#" class="header-nav-item" id="nav-member" onclick="activateSection('member');return false;">회원모집</a>
-      <a href="#" class="header-nav-item" id="nav-board" onclick="activateSection('board');return false;">게시판</a>
-      <a href="#" class="header-nav-item" id="nav-bom" onclick="activateSection('bom');return false;">BOM</a>
-      <a href="#" class="header-nav-item" id="nav-admin" onclick="activateSection('admin');return false;">관리</a>
+      {% for sec in menu_sections() %}
+      {% if not sec.required_permission or (current_operator and current_operator.has_permission(sec.required_permission)) %}
+      <a href="#" class="header-nav-item" id="nav-{{ sec.code }}"
+         onclick="activateSection('{{ sec.code }}');return false;">{{ sec.name }}</a>
+      {% endif %}
+      {% endfor %}
     </nav>
     <div class="header-right">
       {% if current_operator %}
@@ -38,42 +40,20 @@
 
     <!-- 사이드바 (Shell 소유, 섹션별로 표시) -->
     <aside id="sidebar" class="app-sidebar">
-
-      <!-- 회원모집 섹션 사이드바 -->
-      <div id="sidebar-member" class="sidebar-section" style="display:none">
-        <div class="sidebar-section-title">회원모집</div>
+      {% for sec in menu_sections() %}
+      {% if not sec.required_permission or (current_operator and current_operator.has_permission(sec.required_permission)) %}
+      <div id="sidebar-{{ sec.code }}" class="sidebar-section" style="display:none">
+        <div class="sidebar-section-title">{{ sec.name }}</div>
         <nav class="sidebar-nav">
-          <a href="#" class="sidebar-item" onclick="openTab('/members/','회원조회');return false;">회원조회</a>
-          <a href="#" class="sidebar-item" onclick="openTab('/recruit/banner','회원모집 배너');return false;">회원모집 배너</a>
+          {% for item in menu_sidebar_items(sec.code) %}
+          {% if not item.required_permission or (current_operator and current_operator.has_permission(item.required_permission)) %}
+          <a href="#" class="sidebar-item" onclick="openTab('{{ item.url_pattern }}','{{ item.name }}');return false;">{{ item.name }}</a>
+          {% endif %}
+          {% endfor %}
         </nav>
       </div>
-
-      <!-- 게시판 섹션 사이드바 -->
-      <div id="sidebar-board" class="sidebar-section" style="display:none">
-        <div class="sidebar-section-title">게시판</div>
-        <nav class="sidebar-nav">
-          <a href="#" class="sidebar-item" onclick="openTab('/board/','게시판');return false;">게시판</a>
-          <a href="#" class="sidebar-item" onclick="openTab('/notices/','공지사항');return false;">공지사항</a>
-        </nav>
-      </div>
-
-      <!-- BOM 섹션 사이드바 -->
-      <div id="sidebar-bom" class="sidebar-section" style="display:none">
-        <div class="sidebar-section-title">BOM</div>
-        <nav class="sidebar-nav">
-          <a href="#" class="sidebar-item" onclick="openTab('/bom/parts','부품조회');return false;">부품조회</a>
-          <a href="#" class="sidebar-item" onclick="openTab('/bom/list','BOM 조회');return false;">BOM 조회</a>
-        </nav>
-      </div>
-
-      <!-- 관리 섹션 사이드바 -->
-      <div id="sidebar-admin" class="sidebar-section" style="display:none">
-        <div class="sidebar-section-title">관리</div>
-        <nav class="sidebar-nav">
-          <a href="#" class="sidebar-item" onclick="openTab('/admin/operators','운영진 관리');return false;">운영진 관리</a>
-        </nav>
-      </div>
-
+      {% endif %}
+      {% endfor %}
     </aside>
 
     <!-- MDI 콘텐츠 영역 -->
@@ -93,6 +73,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+  // ── URL → 섹션 매핑 (DB 기반) ──────────────────
+  const sectionUrlMap = [
+    {% for entry in menu_url_section_map() %}
+    { url: '{{ entry.url }}', section: '{{ entry.section }}' },
+    {% endfor %}
+  ];
+
   // ── MDI 탭 관리 ──────────────────────────────
   let tabs = [];
   let activeTabId = null;
@@ -229,15 +216,15 @@
   }
 
   function updateSidebarByUrl(url) {
-    if (url.startsWith('/members') || url.startsWith('/recruit')) {
-      activateSection('member');
-    } else if (url.startsWith('/board') || url.startsWith('/notices') || url.startsWith('/posts')) {
-      activateSection('board');
-    } else if (url.startsWith('/bom')) {
-      activateSection('bom');
-    } else if (url.startsWith('/admin')) {
-      activateSection('admin');
+    // DB 기반 URL → 섹션 매핑 (가장 긴 prefix 매칭)
+    let bestSection = null, bestLen = 0;
+    for (const entry of sectionUrlMap) {
+      if (url.startsWith(entry.url) && entry.url.length > bestLen) {
+        bestSection = entry.section;
+        bestLen = entry.url.length;
+      }
     }
+    if (bestSection) activateSection(bestSection);
   }
 
   // 사이드바 열기/닫기

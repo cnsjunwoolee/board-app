@@ -1,0 +1,93 @@
+{% extends "layout_admin.html" %}
+
+{% block page_title_heading %}화면 관리{% endblock %}
+{% block page_breadcrumb %}화면 목록{% endblock %}
+
+{% block admin_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">화면 목록</h2>
+  <a href="/admin/screens/new" class="btn btn-primary btn-sm">화면 추가</a>
+</div>
+
+<!-- 검색/필터 -->
+<div class="d-flex gap-2 mb-3 flex-wrap" style="font-size:0.82rem;">
+  <form class="d-flex gap-2" method="get" action="/admin/screens">
+    <select name="section" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+      <option value="">전체 섹션</option>
+      {% for code, label in section_labels.items() %}
+      <option value="{{ code }}" {% if current_section == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="q" class="form-control form-control-sm" placeholder="화면ID 또는 이름 검색"
+           value="{{ q }}" style="width:200px;">
+    <button type="submit" class="btn btn-outline-primary btn-sm">검색</button>
+    {% if q or current_section %}
+    <a href="/admin/screens" class="btn btn-outline-secondary btn-sm">초기화</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:0.82rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:40px" class="text-center">No</th>
+          <th style="width:130px">화면 ID</th>
+          <th>화면명</th>
+          <th style="width:80px" class="text-center">섹션</th>
+          <th style="width:160px">URL</th>
+          <th style="width:60px" class="text-center">순서</th>
+          <th style="width:80px" class="text-center">접근 권한</th>
+          <th style="width:60px" class="text-center">상태</th>
+          <th style="width:160px" class="text-center">관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for scr in screens %}
+        <tr>
+          <td class="text-center text-muted">{{ loop.index }}</td>
+          <td><code style="font-size:0.78rem;">{{ scr.screen_id }}</code></td>
+          <td><strong>{{ scr.name }}</strong>
+            {% if scr.description %}<br><small class="text-muted">{{ scr.description[:50] }}</small>{% endif %}
+          </td>
+          <td class="text-center">
+            <span class="badge" style="background:var(--lg-brand-light);color:var(--lg-brand);font-size:0.7rem;">
+              {{ section_labels.get(scr.section, scr.section) }}
+            </span>
+          </td>
+          <td><small class="text-muted">{{ scr.url_pattern or '-' }}</small></td>
+          <td class="text-center">{{ scr.sort_order }}</td>
+          <td class="text-center">
+            {% if scr.required_permission %}
+            <span class="badge bg-info" style="font-size:0.68rem;">{{ scr.required_permission }}</span>
+            {% else %}
+            <span class="text-muted" style="font-size:0.72rem;">없음</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if scr.is_active %}
+            <span class="badge bg-success" style="font-size:0.7rem;">활성</span>
+            {% else %}
+            <span class="badge bg-secondary" style="font-size:0.7rem;">비활성</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a href="/admin/screens/{{ scr.id }}/edit" class="btn btn-outline-primary btn-sm py-0 px-1" style="font-size:0.72rem;">수정</a>
+            <a href="/admin/screens/{{ scr.id }}/audit" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;">이력</a>
+            <form action="/admin/screens/{{ scr.id }}/delete" method="post" style="display:inline;"
+                  onsubmit="return confirm('정말 삭제하시겠습니까?');">
+              <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size:0.72rem;">삭제</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted py-4">등록된 화면이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

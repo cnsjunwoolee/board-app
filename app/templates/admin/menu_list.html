@@ -1,0 +1,157 @@
+{% extends "layout_admin.html" %}
+
+{% block page_title_heading %}메뉴 관리{% endblock %}
+{% block page_breadcrumb %}메뉴 관리{% endblock %}
+
+{% block extra_head %}
+<style>
+  .menu-order-input { width:55px; font-size:0.78rem; text-align:center; }
+  .toggle-btn { cursor:pointer; border:none; font-size:0.7rem; }
+  .section-header { font-size:0.85rem; font-weight:600; background:var(--lg-gray-100); }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+
+<!-- ═══ 상단 메뉴 (섹션) ═══ -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">상단 메뉴</h2>
+  <a href="/admin/menus/section/new" class="btn btn-primary btn-sm">섹션 추가</a>
+</div>
+
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:0.82rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:65px" class="text-center">순서</th>
+          <th style="width:100px">코드</th>
+          <th>메뉴명</th>
+          <th style="width:100px" class="text-center">접근 권한</th>
+          <th style="width:65px" class="text-center">상태</th>
+          <th style="width:140px" class="text-center">관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sec in sections %}
+        <tr{% if not sec.is_active %} class="table-secondary"{% endif %}>
+          <td class="text-center">
+            <form method="post" action="/admin/menus/section/{{ sec.id }}/reorder" class="d-inline">
+              <input type="number" name="sort_order" value="{{ sec.sort_order }}"
+                     class="form-control form-control-sm menu-order-input d-inline"
+                     onchange="this.form.submit()">
+            </form>
+          </td>
+          <td><code>{{ sec.code }}</code></td>
+          <td><strong>{{ sec.name }}</strong></td>
+          <td class="text-center">
+            {% if sec.required_permission %}
+            <span class="badge bg-info" style="font-size:0.68rem;">{{ sec.required_permission }}</span>
+            {% else %}
+            <span class="text-muted" style="font-size:0.72rem;">없음</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <form method="post" action="/admin/menus/section/{{ sec.id }}/toggle" class="d-inline">
+              {% if sec.is_active %}
+              <button type="submit" class="badge bg-success toggle-btn">활성</button>
+              {% else %}
+              <button type="submit" class="badge bg-secondary toggle-btn">비활성</button>
+              {% endif %}
+            </form>
+          </td>
+          <td class="text-center">
+            <a href="/admin/menus/section/{{ sec.id }}/edit" class="btn btn-outline-primary btn-sm py-0 px-1" style="font-size:0.72rem;">수정</a>
+            <form action="/admin/menus/section/{{ sec.id }}/delete" method="post" style="display:inline;"
+                  onsubmit="return confirm('이 섹션을 삭제하시겠습니까?');">
+              <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size:0.72rem;">삭제</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-3">등록된 섹션이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ 사이드바 메뉴 ═══ -->
+<h2 class="h5 mb-3">사이드바 메뉴</h2>
+<p class="text-muted" style="font-size:0.78rem;">각 섹션에 속한 화면 중 사이드바에 표시할 항목을 관리합니다. "메뉴 표시" 토글로 사이드바 노출 여부를 제어합니다.</p>
+
+{% for sec in sections %}
+<div class="card mb-3">
+  <div class="card-header section-header py-2">
+    {{ sec.name }} <code class="ms-1" style="font-size:0.72rem;">{{ sec.code }}</code>
+    {% if not sec.is_active %}<span class="badge bg-secondary ms-1" style="font-size:0.65rem;">비활성 섹션</span>{% endif %}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:0.82rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:65px" class="text-center">순서</th>
+          <th style="width:120px">화면 ID</th>
+          <th>메뉴명</th>
+          <th style="width:150px">URL</th>
+          <th style="width:100px" class="text-center">접근 권한</th>
+          <th style="width:75px" class="text-center">메뉴 표시</th>
+          <th style="width:60px" class="text-center">상태</th>
+          <th style="width:80px" class="text-center">관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for scr in screens_by_section.get(sec.code, []) %}
+        <tr{% if not scr.show_in_menu %} class="table-secondary"{% endif %}>
+          <td class="text-center">
+            <form method="post" action="/admin/menus/screen/{{ scr.id }}/reorder" class="d-inline">
+              <input type="number" name="sort_order" value="{{ scr.sort_order }}"
+                     class="form-control form-control-sm menu-order-input d-inline"
+                     onchange="this.form.submit()">
+            </form>
+          </td>
+          <td><code style="font-size:0.72rem;">{{ scr.screen_id }}</code></td>
+          <td>{{ scr.name }}</td>
+          <td><small class="text-muted">{{ scr.url_pattern or '-' }}</small></td>
+          <td class="text-center">
+            <form method="post" action="/admin/menus/screen/{{ scr.id }}/update-permission" class="d-inline">
+              <select name="required_permission" class="form-select form-select-sm"
+                      style="width:auto;font-size:0.72rem;padding:1px 20px 1px 4px;"
+                      onchange="this.form.submit()">
+                <option value="">없음</option>
+                {% for code, label in menu_labels.items() %}
+                <option value="{{ code }}" {% if scr.required_permission == code %}selected{% endif %}>{{ code }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td class="text-center">
+            <form method="post" action="/admin/menus/screen/{{ scr.id }}/toggle-menu" class="d-inline">
+              {% if scr.show_in_menu %}
+              <button type="submit" class="badge bg-success toggle-btn">표시</button>
+              {% else %}
+              <button type="submit" class="badge bg-secondary toggle-btn">숨김</button>
+              {% endif %}
+            </form>
+          </td>
+          <td class="text-center">
+            {% if scr.is_active %}
+            <span class="badge bg-success" style="font-size:0.68rem;">활성</span>
+            {% else %}
+            <span class="badge bg-secondary" style="font-size:0.68rem;">비활성</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            <a href="/admin/screens/{{ scr.id }}/edit" class="btn btn-outline-primary btn-sm py-0 px-1" style="font-size:0.72rem;">수정</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-2">등록된 화면이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

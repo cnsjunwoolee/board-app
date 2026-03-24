@@ -439,3 +439,21 @@ a:hover { color: var(--lg-brand-dark); }
   .hero-icon-4 { width: 50px; }
   .hero-icon-5 { width: 35px; }
 }
+
+/* ── 화면 ID 뱃지 ── */
+
+.screen-id-badge {
+  position: fixed;
+  bottom: 6px;
+  right: 8px;
+  background: rgba(0,0,0,0.45);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.62rem;
+  font-family: 'Courier New', monospace;
+  padding: 1px 6px;
+  border-radius: 3px;
+  z-index: 9999;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.03em;
+}
