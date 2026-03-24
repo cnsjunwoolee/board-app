@@ -493,20 +493,22 @@
     } else {
       html += '<span style="width:16px;display:inline-block;"></span> ';
     }
+    // 부품번호: child_part_id가 있으면 확정된 부품이므로 readonly (삭제 후 재추가만 가능)
+    var pnSet = !!item.child_part_id;
     html += '<input type="text" class="cell-input pn-input" data-path="' + path + '"'
       + ' value="' + esc(item.part_number) + '" placeholder="부품번호"'
-      + ' style="width:calc(100% - ' + (item.has_own_bom ? '50px' : '22px') + ');display:inline-block;"'
-      + dis
-      + (editable ? ' onblur="onPartNumberBlur(this,\'' + path + '\')" onkeydown="onPartNumberKeydown(event,this,\'' + path + '\')"' : '')
+      + ' style="width:calc(100% - ' + (item.has_own_bom ? '50px' : '22px') + ');display:inline-block;' + (pnSet ? 'color:var(--lg-gray-600);' : '') + '"'
+      + (pnSet ? ' readonly tabindex="-1"' : dis)
+      + (!pnSet && editable ? ' onblur="onPartNumberBlur(this,\'' + path + '\')" onkeydown="onPartNumberKeydown(event,this,\'' + path + '\')"' : '')
       + '>'
       + coIcon
       + '</td>';
 
     // 설명 (readonly)
-    html += '<td><input type="text" class="cell-input" value="' + esc(item.description) + '" readonly style="color:var(--lg-gray-500);"></td>';
+    html += '<td><input type="text" class="cell-input" value="' + esc(item.description) + '" readonly tabindex="-1" style="color:var(--lg-gray-500);"></td>';
 
     // Spec (readonly)
-    html += '<td><input type="text" class="cell-input" value="' + esc(item.spec) + '" readonly style="color:var(--lg-gray-500);font-size:0.78rem;"></td>';
+    html += '<td><input type="text" class="cell-input" value="' + esc(item.spec) + '" readonly tabindex="-1" style="color:var(--lg-gray-500);font-size:0.78rem;"></td>';
 
     // 수량
     html += '<td><input type="number" class="cell-input text-end" value="' + item.quantity + '" min="0" step="any"'
@@ -514,22 +516,16 @@
       + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'quantity\',true)"' : '')
       + '></td>';
 
-    // 단위
-    html += '<td><select class="cell-select"' + disSel
-      + (editable ? ' onchange="onFieldInput(this,\'' + path + '\',\'unit\',false)"' : '')
-      + '>' + unitOptions + '</select></td>';
+    // 단위 (readonly)
+    html += '<td><select class="cell-select" disabled>' + unitOptions + '</select></td>';
 
-    // 적용시작일
+    // 적용시작일 (readonly)
     html += '<td><input type="date" class="cell-input" value="' + esc(item.effective_start || '') + '"'
-      + dis
-      + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'effective_start\',false)"' : '')
-      + ' style="font-size:0.78rem;"></td>';
+      + ' readonly tabindex="-1" style="font-size:0.78rem;color:var(--lg-gray-500);"></td>';
 
-    // 적용종료일
+    // 적용종료일 (readonly)
     html += '<td><input type="date" class="cell-input" value="' + esc(item.effective_end || '9999-12-31') + '"'
-      + dis
-      + (editable ? ' oninput="onFieldInput(this,\'' + path + '\',\'effective_end\',false)"' : '')
-      + ' style="font-size:0.78rem;"></td>';
+      + ' readonly tabindex="-1" style="font-size:0.78rem;color:var(--lg-gray-500);"></td>';
 
     // 분류
     html += '<td class="text-center"><span style="font-size:0.75rem;color:var(--lg-gray-500);">' + esc(item.category || '') + '</span></td>';
