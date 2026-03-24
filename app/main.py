@@ -71,6 +71,8 @@ with engine.connect() as conn:
             conn.execute(text("ALTER TABLE bom_items ADD COLUMN IF NOT EXISTS effective_end VARCHAR(10) DEFAULT '9999-12-31'"))
             conn.execute(text("ALTER TABLE bom_headers ADD COLUMN IF NOT EXISTS checked_out INTEGER DEFAULT 0"))
             conn.execute(text("ALTER TABLE bom_headers ADD COLUMN IF NOT EXISTS checked_out_by VARCHAR(50)"))
+            conn.execute(text("ALTER TABLE bom_items ADD COLUMN IF NOT EXISTS creator VARCHAR(50)"))
+            conn.execute(text("ALTER TABLE bom_items ADD COLUMN IF NOT EXISTS updater VARCHAR(50)"))
             # version 컬럼 타입 변경 (INTEGER → VARCHAR) - PLM 버전 형식 "1.0" 지원
             conn.execute(text("ALTER TABLE bom_headers ALTER COLUMN version TYPE VARCHAR(10) USING version::text"))
             conn.commit()

@@ -163,6 +163,8 @@ def build_editable_tree(part_id: int, bom_type: str, db: Session, level: int = 1
             "effective_start": item.effective_start or "",
             "effective_end": item.effective_end or "9999-12-31",
             "remark": item.remark or "",
+            "creator": item.creator or "",
+            "updater": item.updater or "",
             "level": level,
             "has_own_bom": has_own_bom,
             "child_bom_id": child_bom.id if child_bom else None,
@@ -185,11 +187,14 @@ def build_editable_tree(part_id: int, bom_type: str, db: Session, level: int = 1
     return result
 
 
-def _save_items_to_bom(items_data, bom_header, db):
+def _save_items_to_bom(items_data, bom_header, db, operator_name=""):
     """BOM 헤더에 아이템 저장 (기존 삭제 후 새로 생성)"""
+    # 기존 아이템의 creator 보존을 위해 child_part_id → creator 매핑
+    old_items_list = db.query(BOMItem).filter(BOMItem.bom_id == bom_header.id).all()
+    old_creator_map = {item.child_part_id: item.creator for item in old_items_list}
+    old_item_ids = [item.id for item in old_items_list]
+
     # substitutes 먼저 삭제 (FK 제약)
-    old_items = db.query(BOMItem.id).filter(BOMItem.bom_id == bom_header.id).all()
-    old_item_ids = [r[0] for r in old_items]
     if old_item_ids:
         db.query(BOMSubstitute).filter(BOMSubstitute.bom_item_id.in_(old_item_ids)).delete(synchronize_session=False)
     db.query(BOMItem).filter(BOMItem.bom_id == bom_header.id).delete(synchronize_session=False)
@@ -200,6 +205,11 @@ def _save_items_to_bom(items_data, bom_header, db):
         if not child_part_id:
             continue
 
+        # 기존 아이템이면 creator 보존, 신규면 현재 운영자
+        existing_creator = old_creator_map.get(child_part_id)
+        creator = existing_creator or operator_name
+        updater = operator_name
+
         new_item = BOMItem(
             bom_id=bom_header.id,
             child_part_id=child_part_id,
@@ -209,6 +219,8 @@ def _save_items_to_bom(items_data, bom_header, db):
             effective_start=item_data.get("effective_start") or None,
             effective_end=item_data.get("effective_end") or "9999-12-31",
             remark=item_data.get("remark", "") or "",
+            creator=creator,
+            updater=updater,
         )
         db.add(new_item)
         db.flush()
@@ -225,7 +237,7 @@ def _save_items_to_bom(items_data, bom_header, db):
             ))
 
 
-def _save_tree_recursive(items_data, parent_part_id, bom_type, db, root_version=None):
+def _save_tree_recursive(items_data, parent_part_id, bom_type, db, root_version=None, operator_name=""):
     """트리 구조를 재귀적으로 각 BOM 헤더에 저장"""
     # 부모 파트의 BOM 헤더 찾기
     if root_version:
@@ -241,7 +253,7 @@ def _save_tree_recursive(items_data, parent_part_id, bom_type, db, root_version=
         return
 
     # 이 레벨의 아이템 저장
-    _save_items_to_bom(items_data, bom_header, db)
+    _save_items_to_bom(items_data, bom_header, db, operator_name)
 
     # 자식 레벨 재귀 저장
     for item_data in items_data:
@@ -257,7 +269,7 @@ def _save_tree_recursive(items_data, parent_part_id, bom_type, db, root_version=
                 )
                 db.add(child_bom)
                 db.flush()
-            _save_tree_recursive(children, child_part_id, bom_type, db)
+            _save_tree_recursive(children, child_part_id, bom_type, db, operator_name=operator_name)
 
 
 def _cascade_checkout(part_id, bom_type, operator_name, db, visited=None):
@@ -522,8 +534,12 @@ async def bom_save(part_id: int, request: Request, db: Session = Depends(get_db)
 
         valid_items = filter_valid_items(items_data)
 
+        # 현재 운영자
+        current_operator = getattr(getattr(request, 'state', None), 'current_operator', None)
+        operator_name = current_operator.name if current_operator else "알 수 없음"
+
         # 재귀적으로 트리 전체 저장
-        _save_tree_recursive(valid_items, part_id, bom_type, db, root_version=version)
+        _save_tree_recursive(valid_items, part_id, bom_type, db, root_version=version, operator_name=operator_name)
         db.commit()
         return JSONResponse(content={"ok": True, "bom_id": bom_header.id, "version": bom_header.version})
     except Exception as e:

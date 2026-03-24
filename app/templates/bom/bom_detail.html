@@ -88,6 +88,8 @@
           <th style="width:90px" class="text-center">적용시작일</th>
           <th style="width:90px" class="text-center">적용종료일</th>
           <th>분류</th>
+          <th style="width:50px" class="text-center">C/O</th>
+          <th style="width:70px" class="text-center">작업자</th>
           <th>비고</th>
           <th style="width:60px" class="text-center">BOM편집</th>
         </tr>
@@ -115,6 +117,14 @@
           <td class="text-center">-</td>
           <td class="text-center">-</td>
           <td>{{ part.category or '-' }}</td>
+          <td class="text-center">
+            {% if bom_header and bom_header.checked_out %}
+            <span class="badge bg-warning text-dark" style="font-size:0.68rem;">CO</span>
+            {% else %}
+            <span class="badge bg-secondary" style="font-size:0.68rem;">CI</span>
+            {% endif %}
+          </td>
+          <td class="text-center" style="font-size:0.75rem;">-</td>
           <td></td>
           <td class="text-center">
             <a href="#" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;" onclick="event.stopPropagation(); openEditTab({{ part.id }}, '{{ bom_type }}', '{{ bom_header.version if bom_header else '' }}', '{{ part.part_number }}'); return false;">편집</a>
@@ -150,6 +160,16 @@
           <td class="text-center">{{ node.item.effective_start or '-' }}</td>
           <td class="text-center">{{ node.item.effective_end or '9999-12-31' }}</td>
           <td>{{ node.item.child_part.category or '-' }}</td>
+          <td class="text-center">
+            {% if node.child_bom_header and node.child_bom_header.checked_out %}
+            <span class="badge bg-warning text-dark" style="font-size:0.68rem;">CO</span>
+            {% elif node.child_bom_header %}
+            <span class="badge bg-secondary" style="font-size:0.68rem;">CI</span>
+            {% else %}
+            <span class="text-muted" style="font-size:0.68rem;">-</span>
+            {% endif %}
+          </td>
+          <td class="text-center" style="font-size:0.75rem;">{{ node.item.updater or '-' }}</td>
           <td>{{ node.item.remark or '' }}</td>
           <td class="text-center">
             {% if node.children %}
@@ -176,6 +196,8 @@
           <td></td>
           <td></td>
           <td>{{ sub.substitute_part.category or '-' }}</td>
+          <td></td>
+          <td></td>
           <td><small class="text-muted">대치품 (우선순위: {{ sub.priority }})</small></td>
           <td></td>
         </tr>

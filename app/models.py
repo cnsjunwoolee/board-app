@@ -140,6 +140,8 @@ class BOMItem(Base):
     effective_start = Column(String(10))    # 적용시작일 'YYYY-MM-DD'
     effective_end = Column(String(10), default="9999-12-31")  # 적용종료일
     remark = Column(String(200))
+    creator = Column(String(50))       # 최초 등록자
+    updater = Column(String(50))       # 최종 수정자
     created_at = Column(DateTime, default=datetime.now)
 
     child_part = relationship("Part")
